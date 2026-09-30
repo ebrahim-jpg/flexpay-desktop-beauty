@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import {
   ArrowLeftRight,
   CalendarClock,
-  ChefHat,
   Coffee,
   Combine,
   Play,
@@ -47,7 +46,7 @@ import {
 import { bookingTimeLabel, bookingTimer, roomBookingAlert, type BookingDTO } from "@/shared/booking";
 import type { OrderDTO } from "@/shared/orders";
 
-// «1:05» — ساعات:دقايق (القعدة للمتابعة بس، مفيش تسعير وقت على الطاولة)
+// «1:05» — ساعات:دقايق (القعدة للمتابعة بس، مفيش تسعير وقت على الكرسي)
 function sat(ms: number): string {
   const t = Math.max(0, Math.floor(ms / 60_000));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
@@ -56,9 +55,9 @@ function sat(ms: number): string {
 const ALL = "__all__";
 const bookingMuteKey = (b: BookingDTO) => `bk:${b.local_id}:${b.starts_at}`;
 
-// ===== الطاولات («بلايستيشن + كافيه») =====
-// شاشة البيع التانية جنب الغرف: حساب مفتوح على الطاولة بالطلبات بس (مالهاش سعر وقت)،
-// نقل لطاولة تانية · دمج طاولتين · تقسيم الفاتورة · حساب. الفلوس مش ظاهرة هنا (قدّام الزباين).
+// ===== الكراسي («بلايستيشن + كافيه») =====
+// شاشة البيع التانية جنب الغرف: حساب مفتوح على الكرسي بالطلبات بس (مالهاش سعر وقت)،
+// نقل لكرسي تانية · دمج طاولتين · تقسيم الفاتورة · حساب. الفلوس مش ظاهرة هنا (قدّام الزباين).
 export default function TablesPage() {
   const { invoke } = useIPC();
   const formatCurrency = useSettingsStore((s) => s.formatCurrency);
@@ -98,7 +97,7 @@ export default function TablesPage() {
       setSummary(s);
       setBookings(bk);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر تحميل الطاولات");
+      toast.error(e instanceof Error ? e.message : "تعذّر تحميل الكراسي");
     }
   }, [invoke]);
 
@@ -117,7 +116,7 @@ export default function TablesPage() {
   const sessions = useMemo(() => board?.sessions ?? [], [board]);
   const sessionOf = useCallback((tableId: number) => sessions.find((s) => s.room_id === tableId) ?? null, [sessions]);
 
-  // تابات المناطق — بترتيب أول ظهور (نفس ترتيب الطاولات)
+  // تابات المناطق — بترتيب أول ظهور (نفس ترتيب الكراسي)
   const areas = useMemo(() => {
     const out: string[] = [];
     for (const t of tables) {
@@ -128,7 +127,7 @@ export default function TablesPage() {
   }, [tables]);
   const visible = area === ALL ? tables : tables.filter((t) => (t.area?.trim() || NO_AREA_LABEL) === area);
 
-  // تنبيه حجز الطاولة لما ميعاده ييجي — نفس نغمة الغرف (نداء واحد)
+  // تنبيه حجز الكرسي لما ميعاده ييجي — نفس نغمة الغرف (نداء واحد)
   const tableIds = useMemo(() => new Set(tables.map((t) => t.id)), [tables]);
   const bookingRinging = useMemo(
     () =>
@@ -218,14 +217,14 @@ export default function TablesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="الصالة"
-        description="افتح حساب على الطاولة وضيف الأوردرات، انقله أو ادمجه أو قسّم الفاتورة — وكل صنف بيطلع للمطبخ على طول"
+        title="الكراسي"
+        description="افتح جلسة على كرسي واختار الحلاق، ضيف الخدمات، وقسّم أو ادمج الفاتورة — وكل خدمة بتتسجّل باسم اللي عملها"
         action={
           <div className="flex gap-2">
             {hasPermission("canManageProducts") && (
               <Button variant="outline" onClick={() => setManaging(true)}>
                 <Settings2 />
-                إدارة الطاولات
+                إدارة الكراسي
               </Button>
             )}
             <Button variant="accent" onClick={() => setQuickOpen(true)}>
@@ -267,13 +266,13 @@ export default function TablesPage() {
       ) : tables.length === 0 ? (
         <EmptyState
           icon={Coffee}
-          title="لسه مفيش طاولات"
-          description="ضيف الطاولات وقسّمها مناطق لو عايز — من غير أسعار ولا عدد كراسي."
+          title="لسه مفيش كراسي"
+          description="ضيف الكراسي وقسّمها مناطق لو عايز — من غير أسعار ولا عدد كراسي."
           action={
             hasPermission("canManageProducts") ? (
               <Button onClick={() => setManaging(true)}>
                 <Settings2 />
-                إدارة الطاولات
+                إدارة الكراسي
               </Button>
             ) : undefined
           }
@@ -311,9 +310,6 @@ export default function TablesPage() {
             }
 
             const count = session.items.reduce((n, it) => n + it.quantity, 0);
-            // أصناف لسه ماراحتش للمطبخ — النادل لازم يشوفها من الشاشة الرئيسية
-            // عشان مايسيبش طلبات مستنية والمطبخ فاضي.
-            const pendingKitchen = session.items.filter((it) => it.quantity - it.sent_qty > 0.0001).length;
             const elapsed = now - Date.parse(session.started_at);
             const otherOccupied = sessions.filter((s) => s.id !== session.id);
             return (
@@ -343,12 +339,6 @@ export default function TablesPage() {
                 <p className="mt-3 text-sm text-text-secondary">
                   {count > 0 ? `طلبات: ${count} · ${formatCurrency(session.items_subtotal)}` : "لسه مفيش طلبات"}
                 </p>
-                {pendingKitchen > 0 && (
-                  <p className="mt-1 flex items-center gap-1 text-xs font-medium text-accent-foreground">
-                    <ChefHat className="h-3.5 w-3.5" />
-                    {pendingKitchen} صنف لسه ماراحش للمطبخ
-                  </p>
-                )}
                 <button
                   type="button"
                   onClick={() => setCustomerFor(session)}
@@ -399,11 +389,11 @@ export default function TablesPage() {
         </div>
       )}
 
-      {/* نقل: لطاولة فاضية بس — لو هيقعدوا مع ناس، الدمج */}
+      {/* نقل: لكرسي فاضية بس — لو هيقعدوا مع ناس، الدمج */}
       <Dialog open={!!transferFor} onOpenChange={(o) => !o && setTransferFor(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>نقل حساب {transferFor?.room_name} لطاولة فاضية</DialogTitle>
+            <DialogTitle>نقل حساب {transferFor?.room_name} لكرسي فاضية</DialogTitle>
           </DialogHeader>
           <div className="grid max-h-[50vh] grid-cols-3 gap-2 overflow-y-auto">
             {freeTables.map((t) => (
@@ -416,14 +406,14 @@ export default function TablesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* دمج: الحساب ده بيتنقل بطلباته على حساب طاولة تانية */}
+      {/* دمج: الحساب ده بيتنقل بطلباته على حساب كرسي تانية */}
       <Dialog open={!!mergeFor} onOpenChange={(o) => !o && setMergeFor(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>دمج {mergeFor?.room_name} مع طاولة تانية</DialogTitle>
+            <DialogTitle>دمج {mergeFor?.room_name} مع كرسي تانية</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-text-secondary">
-            طلبات {mergeFor?.room_name} هتتنقل على حساب الطاولة اللي هتختارها، و{mergeFor?.room_name} هتبقى فاضية.
+            طلبات {mergeFor?.room_name} هتتنقل على حساب الكرسي اللي هتختارها، و{mergeFor?.room_name} هتبقى فاضية.
           </p>
           <div className="grid max-h-[50vh] grid-cols-3 gap-2 overflow-y-auto">
             {sessions
@@ -518,7 +508,7 @@ export default function TablesPage() {
       <Dialog open={managing} onOpenChange={setManaging}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>إدارة الطاولات</DialogTitle>
+            <DialogTitle>إدارة الكراسي</DialogTitle>
           </DialogHeader>
           <TablesManager onChanged={() => void load()} />
         </DialogContent>
@@ -537,8 +527,8 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 }
 
 /**
- * شريط حجز الطاولة — **تنبيه بس**: مفيش قفل ولا منع فتح حساب. لو الطاولة عليها ناس،
- * الموظف بيقرر يجهّز طاولة تانية للحجز أو ينقلهم.
+ * شريط حجز الكرسي — **تنبيه بس**: مفيش قفل ولا منع فتح حساب. لو الكرسي عليها ناس،
+ * الموظف بيقرر يجهّز كرسي تانية للحجز أو ينقلهم.
  */
 function TableBookingStrip({
   alert,
@@ -563,7 +553,7 @@ function TableBookingStrip({
       </p>
       <p className="mt-0.5 text-xs">
         {soon ? `فاضل ${minutes} دقيقة على الحجز` : timer.status === "due" ? "ميعاد الحجز دلوقتي" : `متأخر ${minutes} دقيقة`}
-        {occupied ? " · الطاولة عليها ناس — جهّز طاولة تانية للحجز أو انقلهم" : ""}
+        {occupied ? " · الكرسي عليها ناس — جهّز كرسي تانية للحجز أو انقلهم" : ""}
       </p>
       {timer.status === "due" && !muted && (
         <button type="button" onClick={onMute} className="mt-1 text-xs underline">

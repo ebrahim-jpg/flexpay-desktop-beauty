@@ -75,25 +75,6 @@ export interface SessionItemDTO {
   staff_name: string | null;
 }
 
-/** بند معلّق للمطبخ — بالفرق مش بالكمية الكاملة (قالب التذكرة بياخده زي ما هو) */
-export interface KitchenPendingItem {
-  item_id: number;
-  name: string;
-  size: string | null;
-  quantity: number;
-  options: string[];
-  notes: string | null;
-}
-
-/** نتيجة «أرسل للمطبخ» */
-export interface SendToKitchenResult {
-  /** عدد الأصناف اللي اتطبعت في الدفعة دي */
-  printed: number;
-  /** رقم الدفعة — التذكرة بتقول «دفعة ٢» */
-  batch: number;
-  session: GamingSessionDTO;
-}
-
 // ===== مدخلات ومخرجات الـIPC =====
 export interface OpenSessionInput {
   room_id: number;

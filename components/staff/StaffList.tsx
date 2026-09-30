@@ -20,6 +20,7 @@ const roleBadge: Record<Role, "default" | "accent" | "muted"> = {
   owner: "default",
   manager: "accent",
   cashier: "muted",
+  stylist: "accent",
   waiter: "muted",
   chef: "muted",
   employee: "muted",

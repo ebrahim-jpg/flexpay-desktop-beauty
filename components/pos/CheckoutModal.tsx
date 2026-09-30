@@ -106,17 +106,6 @@ export function CheckoutModal({ open, onOpenChange, onComplete }: CheckoutModalP
   async function doRecord() {
     try {
       setSubmitting(true);
-      // طلب المتجر ممكن تكون تذكرته اتطبعت خلاص من صفحة طلبات المتجر — بنسأل
-      // **قبل** البيعة عشان مانطبعش ورقة تانية لنفس الأكل بعدها.
-      let ticketAlreadyPrinted = false;
-      if (cart.onlineOrderLocalId) {
-        try {
-          const o = await invoke("onlineOrders:get", cart.onlineOrderLocalId);
-          ticketAlreadyPrinted = !!o?.ticket_printed_at;
-        } catch {
-          /* مش قادرين نتأكد → بنطبع (أحسن من أكل بلا تذكرة) */
-        }
-      }
       const payload: CreateOrderInput = {
         items: items.map((i) => ({
           product_id: i.productId,
@@ -149,27 +138,6 @@ export function CheckoutModal({ open, onOpenChange, onComplete }: CheckoutModalP
       void invoke("orders:printReceipt", result.order.id).catch(() =>
         toast.error("تم البيع لكن تعذّرت الطباعة — راجع إعدادات الطابعة")
       );
-      // تذكرة التجهيز بالأصناف (بلا أسعار). الفشل هنا مايلغيش بيعة اتسجّلت خلاص.
-      //
-      // ⚠️ **مش بتتطبع تاني لطلب متجر اتطبعت تذكرته خلاص** من صفحة طلبات المتجر —
-      // كانت ورقتين لنفس الأكل. ولو الطلب ماطبعش تذكرة (النادل ضربه على طول)
-      // بتتطبع هنا عادي، عشان **كل صنف لازم ياخد تذكرة**.
-      if (!ticketAlreadyPrinted) {
-      void invoke("kitchen:printTicket", {
-        place: cart.orderType === "delivery" ? "توصيل" : "تيك أواي",
-        reference: result.order.receipt_label ?? String(result.order.id),
-        // ⚠️ الحجم والإضافات **لازم** يطلعوا في التذكرة: ورقة بتقول «بيتزا» من غير
-        // «لارج» و«جبنة إضافي» مالهاش قيمة في المطبخ.
-        items: result.order.items.map((it) => ({
-          quantity: it.quantity,
-          name: it.product_name,
-          size: it.variant_size,
-          options: it.selected_modifiers.map((m) => m.option_name),
-          notes: it.notes,
-        })),
-        note: cart.notes || null,
-      }).catch(() => toast.error("تعذّرت طباعة تذكرة المطبخ — راجع طابعة المطبخ"));
-      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "تعذّر إتمام البيع");
     } finally {

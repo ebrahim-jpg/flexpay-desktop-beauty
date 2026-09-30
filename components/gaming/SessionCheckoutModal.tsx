@@ -2,7 +2,7 @@
 import { productWithSize } from "@/shared/sizes";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Banknote, ChefHat, CreditCard, Gift, RefreshCw, Wallet, X } from "lucide-react";
+import { Banknote, CreditCard, Gift, RefreshCw, Wallet, X } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,7 @@ const PM_ICONS: Record<string, React.ReactNode> = {
   instapay: <Wallet className="h-5 w-5" />,
 };
 
-// حساب الطاولة = فاتورة عادية بالطلبات. الأرقام كلها من السيرفر (`gaming:session:quote`)
+// حساب الكرسي = فاتورة عادية بالطلبات. الأرقام كلها من السيرفر (`gaming:session:quote`)
 // بنفس دالة الحساب اللي هتتسجّل — مفيش حساب موازي في الواجهة يختلف عن الفاتورة.
 // فيه نفس أدوات الكاشير: عميل سريع · خصم · فاتورة مجانية (موظف/عميل).
 export function SessionCheckoutModal({ session, open, onOpenChange, onComplete }: SessionCheckoutModalProps) {
@@ -75,7 +75,7 @@ export function SessionCheckoutModal({ session, open, onOpenChange, onComplete }
       setQuoteError(null);
       return q;
     } catch (e) {
-      setQuoteError(e instanceof Error ? e.message : "تعذّر حساب الطاولة");
+      setQuoteError(e instanceof Error ? e.message : "تعذّر حساب الكرسي");
       return null;
     }
   }, [invoke, session, discountType, discountNum]);
@@ -109,10 +109,6 @@ export function SessionCheckoutModal({ session, open, onOpenChange, onComplete }
   const total = quote?.total ?? 0;
   const isCash = method === "cash";
   const itemsNoun = "الطلبات";
-  // أصناف لسه ماراحتش للمطبخ — بتتطبع تلقائي قبل الفاتورة
-  const pendingKitchen = (session?.items ?? []).filter(
-    (it) => it.quantity - it.sent_qty > 0.0001
-  ).length;
   const receivedNum = received === "" ? total : Number(received) || 0;
   const change = isCash ? receivedNum - total : 0;
 
@@ -225,7 +221,7 @@ export function SessionCheckoutModal({ session, open, onOpenChange, onComplete }
               )}
             </div>
 
-            {/* القعدة للمعلومية بس — الطاولة مالهاش سعر وقت */}
+            {/* القعدة للمعلومية بس — الكرسي مالهاش سعر وقت */}
             <p className="text-xs text-text-secondary">القعدة لحد دلوقتي: {formatDuration(quote.actual_minutes)}</p>
 
             {/* المشروبات */}
@@ -241,16 +237,6 @@ export function SessionCheckoutModal({ session, open, onOpenChange, onComplete }
                   <span className="tabular-nums">{formatCurrency(quote.items_subtotal)}</span>
                 </div>
               </div>
-            )}
-
-            {/* ⚠️ قرار المالك: **كل صنف بياخد تذكرة تجهيز**. فلو النادل حاسب وفيه
-                أصناف ماراحتش للمطبخ، بتتطبع تلقائي قبل الفاتورة — والنادل يعرف كده
-                قبل ما يأكّد بدل ما ورقة تطلع مفاجأة. */}
-            {pendingKitchen > 0 && (
-              <p className="flex items-center gap-1.5 rounded-lg bg-accent/10 p-2.5 text-xs text-accent-foreground">
-                <ChefHat className="h-4 w-4 shrink-0" />
-                فيه {pendingKitchen} صنف ماراحش للمطبخ — هيتطبعوا في تذكرة قبل الفاتورة
-              </p>
             )}
 
             {/* الخصم */}

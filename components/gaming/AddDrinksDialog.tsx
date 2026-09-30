@@ -28,7 +28,7 @@ interface AddDrinksDialogProps {
   onChanged: (session: GamingSessionDTO) => void;
 }
 
-// أصناف «الحساب المفتوح» للطاولة — بتتضاف على الحساب ومابتخصمش مخزون غير وقت الفاتورة،
+// أصناف «الحساب المفتوح» للكرسي — بتتضاف على الحساب ومابتخصمش مخزون غير وقت الفاتورة،
 // وكل صنف بيتضاف بتطلع له تذكرة مطبخ على طول.
 export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddDrinksDialogProps) {
   const { invoke } = useIPC();
@@ -91,7 +91,7 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
       });
       onChanged(updated);
       toast.success(`أضيف ${product.name}${size ? ` — ${size.size}` : ""}`);
-      // ⚠️ **مفيش طباعة هنا.** كانت تذكرة بتطلع مع **كل صنف** يتضاف — طاولة واخدة
+      // ⚠️ **مفيش طباعة هنا.** كانت تذكرة بتطلع مع **كل صنف** يتضاف — كرسي واخدة
       // ١٠ أصناف = ١٠ ورقات. التذكرة بقت بـ«أرسل للمطبخ»: **ورقة واحدة بالجديد بس**.
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "تعذّر إضافة الصنف");

@@ -20,7 +20,8 @@ export type OrderSource = "pos" | "online_store" | "table_session";
 export const ORDER_SOURCE_LABELS: Record<string, string> = {
   pos: "الكاشير",
   online_store: "أونلاين",
-  table_session: "الصالة",
+  // ⚠️ المفتاح في الداتابيز لسه `table_session` — «جلسة» هو لفظه في التجميل (مفيش migration)
+  table_session: "جلسة",
 };
 
 // بند خدمة بلا منتج (وقت لعب) — بيدخل الإجمالي والخصم والضريبة زي أي بند،
@@ -37,10 +38,11 @@ export type OrderStatus = "paid" | "cancelled";
 
 // "counter" محفوظ كقيمة لكن معناه "عادي". "takeaway" قيمة قديمة (legacy).
 export const ORDER_TYPE_LABELS: Record<string, string> = {
-  // ⚠️ القيمة في الداتابيز لسه `counter` — «تيك أواي» هو لفظها في المطعم (مفيش migration)
-  counter: "تيك أواي",
+  // ⚠️ القيم في الداتابيز زي ما هي — دي ألفاظ بس (مفيش migration).
+  // التجميل مافيهوش توصيل، و«counter» = بيعة من الكاشير (منتج لزبون داخل).
+  counter: "بيع",
   delivery: "توصيل",
-  takeaway: "تيك أواي",
+  takeaway: "بيع",
 };
 
 export function orderTypeLabel(type: string): string {

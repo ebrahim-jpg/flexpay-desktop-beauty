@@ -1,4 +1,5 @@
-// اختبار الطاولات (نسخة «كافيه» بس) — **من وصلة الواجهة** (gamingRepository → ordersRepository.create).
+// اختبار الكراسي والجلسات (نسخة التجميل)
+// ⚠️ كل جلسة **لازم** لها حلاق (`staff_id`) — العمولة بتتحسب عليه. — **من وصلة الواجهة** (gamingRepository → ordersRepository.create).
 //
 //   • كل مكان طاولة (kind=table) سعرها صفر، ومافيش أي غرف ولا تسعير وقت.
 //   • الحساب = فاتورة source='table_session' **من غير بند وقت** + session_id على الفاتورة.
@@ -71,11 +72,11 @@ try {
 
   // ===== ② فتح حساب + طلبات + حساب =====
   console.log("\n— حساب طاولة كامل —");
-  let tab = gamingRepository.openSession({ room_id: t1.id }, actor);
+  let tab = gamingRepository.openSession({ room_id: t1.id, staff_id: actorId }, actor);
   ok(tab.kind === "table" && tab.status === "open", "الحساب اتفتح من نوع table");
   ok(!("segments" in tab) && !("planned_minutes" in tab), "مفيش فترات وقت ولا مدة محددة أصلاً");
   ok(tab.session_label.startsWith("حساب #"), `اللافتة «حساب #…» (${tab.session_label})`);
-  rejects(() => gamingRepository.openSession({ room_id: t1.id }, actor), "حساب تاني على نفس الطاولة مرفوض", "شغّال");
+  rejects(() => gamingRepository.openSession({ room_id: t1.id, staff_id: actorId }, actor), "حساب تاني على نفس الطاولة مرفوض", "شغّال");
   ok(typeof gamingRepository.switchMode === "undefined" && typeof gamingRepository.extendSession === "undefined", "مفيش وضع ولا تمديد أصلاً");
 
   tab = gamingRepository.addItem({ session_id: tab.id, product_id: coffee, quantity: 2 }, actor);
@@ -101,12 +102,12 @@ try {
   ok(sPayload.kind === "table" && sPayload.status === "closed", "المزامنة: الحساب بيبعت kind");
   ok(sPayload.time_amount === 0 && sPayload.billed_minutes === 0 && Array.isArray(sPayload.segments) && sPayload.segments.length === 0, "المزامنة: نفس شكل الجلسة القديم (وقت صفر · فترات فاضية) — عقد الويب زي ما هو");
   ok(ordersRepository.getById(res.order.id).source === "table_session", "toDTO بيعدّي table_session (مش بيحوّلها pos)");
-  rejects(() => gamingRepository.checkout({ session_id: gamingRepository.openSession({ room_id: t2.id }, actor).id, ...cash() }, actor), "حساب فاضي مايتقفلش بفاتورة", "الإلغاء");
+  rejects(() => gamingRepository.checkout({ session_id: gamingRepository.openSession({ room_id: t2.id, staff_id: actorId }, actor).id, ...cash() }, actor), "حساب فاضي مايتقفلش بفاتورة", "الإلغاء");
 
   // ===== ③ النقل =====
   console.log("\n— نقل الحساب —");
   const open2 = db.prepare("SELECT id FROM gaming_sessions WHERE room_id = ? AND status='open'").get(t2.id).id;
-  let a = gamingRepository.openSession({ room_id: t1.id }, actor);
+  let a = gamingRepository.openSession({ room_id: t1.id, staff_id: actorId }, actor);
   a = gamingRepository.addItem({ session_id: a.id, product_id: coffee, quantity: 1 }, actor);
   rejects(() => gamingRepository.transferSession(a.id, t2.id), "النقل لطاولة عليها حساب مرفوض", "طاولة 2");
   rejects(() => gamingRepository.transferSession(a.id, t1.id), "النقل لنفس الطاولة مرفوض");
@@ -168,7 +169,7 @@ try {
   // صف غرفة قديم (مثلاً داتا اتنقلت بالغلط) — مايتفتحش عليه حساب ومابيظهرش في القايمة
   db.prepare("INSERT INTO gaming_rooms (local_id,kind,name,rate_single,rate_multi,created_at) VALUES ('old-room','room','غرفة قديمة',40,60,?)").run(new Date().toISOString());
   const oldRoom = db.prepare("SELECT id FROM gaming_rooms WHERE local_id='old-room'").get().id;
-  rejects(() => gamingRepository.openSession({ room_id: oldRoom }, actor), "فتح حساب على غرفة مرفوض", "للكافيه");
+  rejects(() => gamingRepository.openSession({ room_id: oldRoom, staff_id: actorId }, actor), "فتح جلسة على غرفة مرفوض", "للتجميل");
   rejects(() => gamingRepository.transferSession(a.id, oldRoom), "النقل لغرفة مرفوض");
   ok(!gamingRepository.listRooms(true).some((r) => r.id === oldRoom), "الغرفة القديمة مش ظاهرة في قايمة الطاولات");
   const board = gamingRepository.getBoard();

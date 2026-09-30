@@ -52,7 +52,6 @@ import type {
   SplitCheckoutInput,
   GamingRoomDTO,
   GamingSessionDTO,
-  SendToKitchenResult,
   GamingTodaySummary,
   OpenSessionInput,
   SaveRoomInput,
@@ -292,24 +291,6 @@ export interface IpcChannels {
   "orders:getById": { input: number; output: OrderDTO | null };
   "orders:calculateTotals": { input: CalculateTotalsInput; output: OrderTotals };
   "orders:printReceipt": { input: number; output: boolean };
-  // تذكرة المطبخ — بلا أسعار، على طابعة المطبخ لو متظبطة
-  "kitchen:printTicket": {
-    input: {
-      place: string;
-      reference?: string | null;
-      items: {
-        quantity: number;
-        name: string;
-        /** الحجم — بيطلع جنب اسم الصنف بنفس حجم الخط */
-        size?: string | null;
-        /** أسماء الإضافات المختارة (بلا أسعار) */
-        options?: string[] | null;
-        notes?: string | null;
-      }[];
-      note?: string | null;
-    };
-    output: boolean;
-  };
 
   // ===== العملاء (PRD-06) =====
   "customers:getAll": { input: CustomerListQuery; output: CustomerDTO[] };
@@ -453,8 +434,6 @@ export interface IpcChannels {
   "gaming:session:addItem": { input: AddSessionItemInput; output: GamingSessionDTO };
   "gaming:session:updateItem": { input: { item_id: number; quantity: number }; output: GamingSessionDTO };
   "gaming:session:removeItem": { input: number; output: GamingSessionDTO };
-  /** «أرسل للمطبخ» — تذكرة واحدة بالأصناف اللي لسه ماراحتش. المدخل = رقم الحساب */
-  "gaming:session:sendToKitchen": { input: number; output: SendToKitchenResult };
   "gaming:session:quote": {
     input: { session_id: number; discount_type?: "none" | "percentage" | "fixed"; discount_value?: number };
     output: SessionQuote;

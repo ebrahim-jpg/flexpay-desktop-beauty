@@ -8,7 +8,7 @@ import { requireReports } from "./access";
 import { effectivePermissions } from "../../shared/permissions";
 import { formatReceiptNumber } from "../../shared/orders";
 import { buildReceiptHtml } from "../lib/receipt-html";
-import { printReceipt, printKitchenTicket } from "../lib/printer";
+import { printReceipt } from "../lib/printer";
 import type { IpcResult } from "../../types/ipc.types";
 import type {
   CreateOrderInput,
@@ -144,31 +144,4 @@ export function registerOrdersIpc(): void {
     })
   );
 
-  // تذكرة المطبخ — الشيف بيجهّز منها. **بلا أسعار** وعلى طابعة المطبخ لو متظبطة.
-  // ⚠️ بترجع false بدل ما ترمي لو مفيش أصناف — فشل الطباعة مايوقفش البيع ولا الأوردر.
-  ipcMain.handle("kitchen:printTicket", (_e, input: KitchenTicketPayload) =>
-    handleAsync(async () => {
-      const settings = settingsRepository.get();
-      const actorId = getCurrentActor();
-      const actor = actorId != null ? usersRepository.getById(actorId) : null;
-      return printKitchenTicket(
-        {
-          place: input.place,
-          reference: input.reference ?? null,
-          items: input.items,
-          note: input.note ?? null,
-          staffName: actor?.name ?? null,
-        },
-        settings.kitchenPrinterName ?? settings.printerName,
-        settings.shopName
-      );
-    })
-  );
-}
-
-interface KitchenTicketPayload {
-  place: string;
-  reference?: string | null;
-  items: { quantity: number; name: string; notes?: string | null }[];
-  note?: string | null;
 }

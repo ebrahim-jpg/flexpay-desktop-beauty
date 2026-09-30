@@ -66,11 +66,10 @@ export function registerOnlineOrdersIpc(): void {
       const order = onlineOrdersRepository.getByLocalId(localId);
       if (!order) throw new Error("الطلب غير موجود");
       const settings = settingsRepository.get();
-      // ⚠️ دي **تذكرة مطبخ** مش فاتورة → طابعة المطبخ، ولو مش متظبّطة طابعة
-      // الفاتورة (المطعم الصغير بطابعة واحدة). كانت بتطلع على طابعة الفاتورة دايماً.
+      // تذكرة تجهيز طلب المتجر — على طابعة الفاتورة (التجميل مافيهوش طابعة تانية)
       const printed = await printOnlineOrderTicket(
         order,
-        settings.kitchenPrinterName ?? settings.printerName,
+        settings.printerName,
         settings.shopName
       );
       if (printed) onlineOrdersRepository.markTicketPrinted(localId);

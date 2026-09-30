@@ -20,8 +20,8 @@ interface Draft {
 
 const toDraft = (r: GamingRoomDTO): Draft => ({ id: r.id, name: r.name, area: r.area ?? "", is_active: r.is_active });
 
-// إدارة الطاولات («بلايستيشن + كافيه»): الاسم + المنطقة بس. **مفيش سعر ولا عدد كراسي** (قرار صاحب
-// المشروع: الكراسي بتزيد وتقل على حسب الناس). الطاولة اللي عليها حساب مفتوح مايتوقفش/مايتحذفش (الـmain بيرفض).
+// إدارة الكراسي («بلايستيشن + كافيه»): الاسم + المنطقة بس. **مفيش سعر ولا عدد كراسي** (قرار صاحب
+// المشروع: الكراسي بتزيد وتقل على حسب الناس). الكرسي اللي عليها حساب مفتوح مايتوقفش/مايتحذفش (الـmain بيرفض).
 export function TablesManager({ onChanged }: { onChanged?: () => void }) {
   const { invoke } = useIPC();
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -33,7 +33,7 @@ export function TablesManager({ onChanged }: { onChanged?: () => void }) {
       const tables = await invoke("gaming:rooms:list", { includeInactive: true });
       setDrafts(tables.map(toDraft));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر تحميل الطاولات");
+      toast.error(e instanceof Error ? e.message : "تعذّر تحميل الكراسي");
     }
   }, [invoke]);
 
@@ -65,7 +65,7 @@ export function TablesManager({ onChanged }: { onChanged?: () => void }) {
       await load();
       onChanged?.();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر حفظ الطاولة");
+      toast.error(e instanceof Error ? e.message : "تعذّر حفظ الكرسي");
     } finally {
       setSavingIdx(null);
     }
@@ -82,32 +82,32 @@ export function TablesManager({ onChanged }: { onChanged?: () => void }) {
       await load();
       onChanged?.();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر حذف الطاولة");
+      toast.error(e instanceof Error ? e.message : "تعذّر حذف الكرسي");
     }
   }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>الطاولات والمناطق</CardTitle>
+        <CardTitle>الكراسي والمناطق</CardTitle>
         <Button
           size="sm"
           variant="outline"
           onClick={() =>
             setDrafts((ds) => [
               ...ds,
-              { name: `طاولة ${ds.length + 1}`, area: ds[ds.length - 1]?.area ?? "", is_active: true },
+              { name: `كرسي ${ds.length + 1}`, area: ds[ds.length - 1]?.area ?? "", is_active: true },
             ])
           }
         >
           <Plus />
-          طاولة جديدة
+          كرسي جديدة
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
         {drafts.length === 0 && (
           <p className="text-sm text-text-secondary">
-            لسه مفيش طاولات — ضيف الطاولات، وحط لكل واحدة منطقة (داخلي / خارجي / الدور التاني) لو عايز تقسّمهم.
+            لسه مفيش كراسي — ضيف الكراسي، وحط لكل واحدة منطقة (داخلي / خارجي / الدور التاني) لو عايز تقسّمهم.
           </p>
         )}
         {drafts.length > 0 && (
@@ -149,8 +149,8 @@ export function TablesManager({ onChanged }: { onChanged?: () => void }) {
       <ConfirmDialog
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}
-        title={`حذف ${toDelete?.name ?? "الطاولة"}؟`}
-        description="الحسابات القديمة بتفضل في السجل والتقارير. الطاولة اللي عليها حساب مفتوح مايتحذفش."
+        title={`حذف ${toDelete?.name ?? "الكرسي"}؟`}
+        description="الحسابات القديمة بتفضل في السجل والتقارير. الكرسي اللي عليها حساب مفتوح مايتحذفش."
         confirmText="حذف"
         variant="danger"
         onConfirm={async () => {

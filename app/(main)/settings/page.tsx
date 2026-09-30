@@ -8,7 +8,6 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { ShopInfoForm } from "@/components/settings/ShopInfoForm";
 import { BusinessSettings } from "@/components/settings/BusinessSettings";
 import { PaymentMethodsEditor } from "@/components/settings/PaymentMethodsEditor";
-import { DeliveryZonesEditor } from "@/components/settings/DeliveryZonesEditor";
 import { NationalitiesEditor } from "@/components/settings/NationalitiesEditor";
 import { ReceiptSettings } from "@/components/settings/ReceiptSettings";
 import { SyncSettings } from "@/components/settings/SyncSettings";
@@ -53,7 +52,6 @@ export default function SettingsPage() {
             <TabsTrigger value="business">إعدادات العمل</TabsTrigger>
             <TabsTrigger value="gaming">الطاولات</TabsTrigger>
             <TabsTrigger value="payments">طرق الدفع</TabsTrigger>
-            <TabsTrigger value="delivery">مناطق التوصيل</TabsTrigger>
             <TabsTrigger value="nationalities">الجنسيات</TabsTrigger>
             <TabsTrigger value="receipt">الفاتورة والطباعة</TabsTrigger>
             {isOwner && <TabsTrigger value="sync">المزامنة</TabsTrigger>}
@@ -71,9 +69,6 @@ export default function SettingsPage() {
           </TabsContent>
           <TabsContent value="payments">
             <PaymentMethodsEditor />
-          </TabsContent>
-          <TabsContent value="delivery">
-            <DeliveryZonesEditor />
           </TabsContent>
           <TabsContent value="nationalities">
             <NationalitiesEditor />

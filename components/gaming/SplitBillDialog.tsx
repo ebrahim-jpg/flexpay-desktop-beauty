@@ -27,7 +27,7 @@ interface SplitBillDialogProps {
 
 type SplitQuote = { subtotal: number; discount_amount: number; tax_rate: number; tax_amount: number; total: number };
 
-// تقسيم فاتورة الطاولة: كل واحد بيختار اللي هيدفعه (كمية جزئية مسموحة) → فاتورة لوحدها،
+// تقسيم فاتورة الكرسي: كل واحد بيختار اللي هيدفعه (كمية جزئية مسموحة) → فاتورة لوحدها،
 // والحساب يفضل مفتوح بالباقي. الإجمالي من السيرفر (`gaming:session:quoteSplit`) بنفس تسعير الفاتورة.
 export function SplitBillDialog({ session, open, onOpenChange, onPaid }: SplitBillDialogProps) {
   const { invoke } = useIPC();
@@ -159,7 +159,7 @@ export function SplitBillDialog({ session, open, onOpenChange, onPaid }: SplitBi
         </DialogHeader>
 
         <p className="text-sm text-text-secondary">
-          اختار اللي الشخص ده هيدفعه. هتطلع فاتورة بيه لوحده، والباقي يفضل على الطاولة لحد ما يتدفع.
+          اختار اللي الشخص ده هيدفعه. هتطلع فاتورة بيه لوحده، والباقي يفضل على الكرسي لحد ما يتدفع.
         </p>
 
         <div className="max-h-[40vh] space-y-2 overflow-y-auto">

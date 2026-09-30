@@ -2,8 +2,6 @@ import { ipcMain } from "electron";
 import { gamingRepository } from "../repositories/gaming.repository";
 import { auditRepository } from "../repositories/audit.repository";
 import { usersRepository } from "../repositories/users.repository";
-import { settingsRepository } from "../repositories/settings.repository";
-import { printKitchenTicket } from "../lib/printer";
 import { getCurrentActor } from "./session";
 import { effectivePermissions } from "../../shared/permissions";
 import type { IpcResult, SafeUser } from "../../types/ipc.types";
@@ -13,7 +11,6 @@ import type {
   OpenSessionInput,
   SaveRoomInput,
   SplitCheckoutInput,
-  KitchenPendingItem,
 } from "../../shared/gaming";
 
 function handle<T>(fn: () => T): IpcResult<T> {
@@ -32,38 +29,6 @@ async function handleAsync<T>(fn: () => Promise<T>): Promise<IpcResult<T>> {
     const message = err instanceof Error ? err.message : "حصل خطأ غير متوقع";
     return { ok: false, error: message };
   }
-}
-
-/**
- * يطبع تذكرة تجهيز واحدة بالأصناف المعلّقة.
- * ⚠️ المكان في التذكرة = اسم الطاولة، والمرجع = رقم الحساب + **رقم الدفعة** عشان
- * المطبخ يعرف دي دفعة تانية لنفس الطاولة مش أوردر بيتكرّر.
- * وبتطلع على طابعة المطبخ، ولو مش متظبّطة على طابعة الفاتورة (مطعم بطابعة واحدة).
- */
-async function printPending(
-  pending: KitchenPendingItem[],
-  placeName: string,
-  sessionLabel: string,
-  batch: number,
-  staffName: string
-): Promise<boolean> {
-  const settings = settingsRepository.get();
-  return printKitchenTicket(
-    {
-      place: placeName,
-      reference: `${sessionLabel} · دفعة ${batch.toLocaleString("ar-EG")}`,
-      items: pending.map((p) => ({
-        quantity: p.quantity,
-        name: p.name,
-        size: p.size,
-        options: p.options,
-        notes: p.notes,
-      })),
-      staffName,
-    },
-    settings.kitchenPrinterName ?? settings.printerName,
-    settings.shopName
-  );
 }
 
 function requireActor(): SafeUser {
@@ -193,44 +158,6 @@ export function registerGamingIpc(): void {
       )
   );
 
-  /**
-   * «أرسل للمطبخ» — تذكرة **واحدة** بالأصناف اللي لسه ماراحتش.
-   *
-   * ⚠️ **الترتيب مقصود:** نجيب المعلّق → نطبع → **لو الطباعة نجحت بس** نعلّم
-   * الإرسال. لو عكسنا الترتيب، طابعة فاضية ورق كانت هتخلّي الأصناف «راحت»
-   * والمطبخ مايشوفهاش أبداً — والنادل مش هيعرف يعيد.
-   *
-   * ⚠️ والطباعة **مش** في الريبو: الريبو مايعرفش الطابعة عشان المنطق يتختبر
-   * من غير نافذة (نفس درس `buildKitchenTicketHtml`).
-   */
-  ipcMain.handle("gaming:session:sendToKitchen", (_e, sessionId: number) =>
-    handleAsync(async () => {
-      const user = requirePos();
-      const pending = gamingRepository.pendingKitchenItems(sessionId);
-      if (pending.length === 0) throw new Error("مفيش أصناف جديدة تتبعت للمطبخ");
-      const session = gamingRepository.getSession(sessionId);
-      if (!session) throw new Error("الحساب غير موجود");
-
-      const batch = session.kitchen_batches + 1;
-      await printPending(pending, session.room_name, session.session_label, batch, user.name);
-      gamingRepository.markKitchenSent(sessionId, { id: user.id, name: user.name });
-
-      auditRepository.log({
-        userId: user.id,
-        userName: user.name,
-        action: `أرسل ${pending.length} صنف للمطبخ — ${session.room_name} (دفعة ${batch})`,
-        entityType: "gaming_session",
-        entityId: session.id,
-        newValue: { batch, items: pending.map((p) => `${p.name} ×${p.quantity}`) },
-      });
-      return {
-        printed: pending.length,
-        batch,
-        session: gamingRepository.getSession(sessionId)!,
-      };
-    })
-  );
-
   ipcMain.handle("gaming:session:checkout", (_e, input: CheckoutSessionInput) =>
     handleAsync(async () => {
       const user = requirePos();
@@ -239,20 +166,6 @@ export function registerGamingIpc(): void {
 
       // ⚠️ **قرار المالك: كل صنف بياخد تذكرة تجهيز أياً كان.** فلو النادل حاسب
       // وفيه أصناف ماراحتش للمطبخ، بتتطبع **قبل** الفاتورة — مش بتتعدّى بصمت.
-      // الفشل هنا مايوقفش الحساب (الفلوس أهم من الورقة).
-      const pending = gamingRepository.pendingKitchenItems(input.session_id);
-      if (pending.length > 0) {
-        const s = gamingRepository.getSession(input.session_id);
-        if (s) {
-          try {
-            await printPending(pending, s.room_name, s.session_label, s.kitchen_batches + 1, user.name);
-            gamingRepository.markKitchenSent(input.session_id, { id: user.id, name: user.name });
-          } catch {
-            /* الطباعة فشلت — الحساب بيكمّل والنادل بيشوف الأصناف لسه معلّقة */
-          }
-        }
-      }
-
       const result = gamingRepository.checkout(input, { id: user.id, name: user.name });
       logOrder(user, result);
       return result;

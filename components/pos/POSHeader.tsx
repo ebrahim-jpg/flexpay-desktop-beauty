@@ -55,22 +55,6 @@ export function POSHeader() {
   return (
     <header className="flex flex-col gap-2 border-b border-border bg-surface px-4 py-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-3">
-        {/* نوع الطلب — segmented */}
-        <div className="inline-flex shrink-0 rounded-xl bg-surface-secondary p-1">
-          <SegButton
-            active={!isDelivery}
-            onClick={() => setOrderType("counter")}
-            icon={<ShoppingBag className="h-4 w-4" />}
-            label="تيك أواي"
-          />
-          <SegButton
-            active={isDelivery}
-            onClick={() => setOrderType("delivery")}
-            icon={<Truck className="h-4 w-4" />}
-            label="توصيل"
-          />
-        </div>
-
         <div className="h-8 w-px shrink-0 bg-border" />
 
         {/* العميل */}

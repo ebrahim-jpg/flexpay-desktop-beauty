@@ -18,7 +18,6 @@ import {
   type GamingTodaySummary,
   type SaveRoomInput,
   type SessionItemDTO,
-  type KitchenPendingItem,
   type SessionQuote,
   type OpenSessionInput,
   type AddSessionItemInput,
@@ -679,73 +678,6 @@ export class GamingRepository extends BaseRepository {
     return this.toDTO(this.sessionRow(item.session_id)!);
   }
 
-  // ===================== المطبخ =====================
-  /**
-   * الأصناف اللي **لسه ماراحتش للمطبخ** — بالفرق مش بالكمية الكاملة.
-   *
-   * ⚠️ الفرق هو كل الفكرة: بيتزا راحت ١ وبقت ٢ → التذكرة الجديدة تقول «×١» عشان
-   * المطبخ مايعيدش اللي عمله. والريبو **مايعرفش الطابعة** — بيرجّع الليستة
-   * والـIPC هو اللي بيطبع، عشان المنطق يتختبر من غير نافذة ولا طابعة.
-   */
-  pendingKitchenItems(sessionId: number): KitchenPendingItem[] {
-    const rows = this.loadItemRows(sessionId).filter((r) => r.quantity - (r.sent_qty ?? 0) > 1e-9);
-    return rows.map((r) => {
-      const dto = this.itemDTO(r);
-      return {
-        item_id: r.id,
-        name: r.product_name,
-        size: dto.variant_size,
-        quantity: round2(r.quantity - (r.sent_qty ?? 0)),
-        options: this.optionNames(r.product_id, dto.modifier_option_ids),
-        notes: r.notes,
-      };
-    });
-  }
-
-  /** أسماء الإضافات المختارة — التذكرة بتطبعها تحت الصنف (بلا أسعار) */
-  private optionNames(productId: number, optionIds: string[]): string[] {
-    if (!optionIds.length) return [];
-    const row = this.db
-      .prepare("SELECT modifiers FROM products WHERE id = ?")
-      .get(productId) as { modifiers: string } | undefined;
-    if (!row?.modifiers) return [];
-    try {
-      const groups = JSON.parse(row.modifiers) as {
-        options?: { id: string; name: string }[];
-      }[];
-      const picked = new Set(optionIds);
-      const out: string[] = [];
-      for (const g of Array.isArray(groups) ? groups : []) {
-        for (const o of g.options ?? []) if (picked.has(o.id)) out.push(o.name);
-      }
-      return out;
-    } catch {
-      return [];
-    }
-  }
-
-  /**
-   * يعلّم كل بنود الحساب إنها راحت للمطبخ، وبيزوّد عدّاد الدفعات ويرجّع رقمها.
-   * ⚠️ بيتنادى **بعد** نجاح الطباعة بس — طباعة فاشلة مايصحّش تعلّم أصناف إنها راحت.
-   */
-  markKitchenSent(sessionId: number, actor?: Actor): number {
-    return this.transaction(() => {
-      this.db
-        .prepare("UPDATE gaming_session_items SET sent_qty = quantity WHERE session_id = ?")
-        .run(sessionId);
-      const now = this.now();
-      this.db
-        .prepare(
-          `UPDATE gaming_sessions SET kitchen_batches = kitchen_batches + 1, updated_at = @now WHERE id = @id`
-        )
-        .run({ id: sessionId, now });
-      void actor;
-      const row = this.db
-        .prepare("SELECT kitchen_batches AS b FROM gaming_sessions WHERE id = ?")
-        .get(sessionId) as { b: number } | undefined;
-      return row?.b ?? 1;
-    });
-  }
 
   removeItem(itemId: number): GamingSessionDTO {
     return this.updateItemQuantity(itemId, 0);

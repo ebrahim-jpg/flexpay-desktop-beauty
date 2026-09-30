@@ -80,7 +80,7 @@ export default function BookingsPage() {
   // الحجز اللي بنحوّله لجلسة — بيسأل الحلاق الأول (العمولة بتتحدد بيه)
   const [convertFor, setConvertFor] = useState<BookingDTO | null>(null);
   const [confirmNote, setConfirmNote] = useState("");
-  // «بلايستيشن + كافيه»: حجز الطاولة بيوصل من غير طاولة — الموظف بيختارها وقت التأكيد
+  // «بلايستيشن + كافيه»: حجز الكرسي بيوصل من غير كرسي — الموظف بيختارها وقت التأكيد
   const [tables, setTables] = useState<GamingRoomDTO[]>([]);
   const [confirmTable, setConfirmTable] = useState<string>("");
   const [rejectFor, setRejectFor] = useState<BookingDTO | null>(null);
@@ -121,7 +121,7 @@ export default function BookingsPage() {
       try {
         setTables(await invoke("gaming:rooms:list", {}));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "تعذّر تحميل الطاولات");
+        toast.error(e instanceof Error ? e.message : "تعذّر تحميل الكراسي");
       }
     }
   }
@@ -211,9 +211,9 @@ export default function BookingsPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold text-text-primary">
-                      {b.room_id != null ? b.room_name : "حجز طاولة"}
+                      {b.room_id != null ? b.room_name : "حجز كرسي"}
                       <span className="mr-2 text-sm font-normal text-text-secondary">
-                        {`${b.party_size ?? "?"} أفراد${b.room_id == null ? " · الطاولة هتتحدد وقت التأكيد" : ""}`}
+                        {`${b.party_size ?? "?"} أفراد${b.room_id == null ? " · الكرسي هتتحدد وقت التأكيد" : ""}`}
                       </span>
                     </p>
                     <p className="text-sm text-text-secondary">
@@ -346,18 +346,18 @@ export default function BookingsPage() {
           {confirmFor && (
             <div className="space-y-3">
               <p className="text-sm text-text-secondary">
-                {confirmFor.kind === "table" ? `طاولة لـ${confirmFor.party_size ?? "?"} أفراد` : confirmFor.room_name} ·{" "}
+                {confirmFor.kind === "table" ? `كرسي لـ${confirmFor.party_size ?? "?"} أفراد` : confirmFor.room_name} ·{" "}
                 {dayOf(confirmFor.starts_at)} {timeOf(confirmFor.starts_at)} · {plannedLabel(confirmFor.duration_minutes)}
               </p>
               {confirmFor.kind === "table" && (
                 <div className="space-y-1.5">
-                  <Label>الطاولة</Label>
+                  <Label>الكرسي</Label>
                   <select
                     className="h-10 w-full rounded-md border border-border bg-surface px-3 text-sm"
                     value={confirmTable}
                     onChange={(e) => setConfirmTable(e.target.value)}
                   >
-                    <option value="">اختار الطاولة</option>
+                    <option value="">اختار الكرسي</option>
                     {tables.map((t) => (
                       <option key={t.id} value={String(t.id)}>
                         {t.name}
@@ -366,7 +366,7 @@ export default function BookingsPage() {
                     ))}
                   </select>
                   <p className="text-xs text-text-secondary">
-                    لو الطاولة عليها حجز متأكّد في نفس الوقت، التأكيد هيترفض واختار غيرها.
+                    لو الكرسي عليها حجز متأكّد في نفس الوقت، التأكيد هيترفض واختار غيرها.
                   </p>
                 </div>
               )}
@@ -420,7 +420,7 @@ export default function BookingsPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2">
-              {["الطاولات محجوزة", "الزبون طلب الإلغاء", "مفيش تحويل", "الوقت مش متاح"].map((r) => (
+              {["الكراسي محجوزة", "الزبون طلب الإلغاء", "مفيش تحويل", "الوقت مش متاح"].map((r) => (
                 <button
                   key={r}
                   onClick={() => setRejectReason(r)}
