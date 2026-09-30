@@ -36,6 +36,8 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [categories, setCategories] = useState<CategoryDTO[]>([]);
   const [category, setCategory] = useState<number | null>(null);
+  // الصالون كتالوجه خدمات في الأساس — الفلتر بيوصّل للخدمة بضغطة
+  const [kind, setKind] = useState<"all" | "service" | "product">("all");
   const [search, setSearch] = useState("");
   const [modifierProduct, setModifierProduct] = useState<ProductDTO | null>(null);
   const [sizeProduct, setSizeProduct] = useState<ProductDTO | null>(null);
@@ -65,9 +67,10 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
     return products.filter(
       (p) =>
         (category === null || p.category_id === category) &&
+        (kind === "all" || (kind === "service" ? p.is_service : !p.is_service)) &&
         (!q || p.name.toLowerCase().includes(q) || (p.barcode ?? "").toLowerCase().includes(q))
     );
-  }, [products, category, search]);
+  }, [products, category, kind, search]);
 
   async function add(
     product: ProductDTO,
@@ -260,8 +263,31 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
                 autoFocus
               />
             </div>
+            <div className="flex gap-2">
+              {(
+                [
+                  { k: "all" as const, label: "الكل" },
+                  { k: "service" as const, label: "خدمات" },
+                  { k: "product" as const, label: "منتجات" },
+                ]
+              ).map((t) => (
+                <button
+                  key={t.k}
+                  type="button"
+                  onClick={() => setKind(t.k)}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                    kind === t.k
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-secondary text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap gap-2">
-              {[{ id: null as number | null, name: "الكل" }, ...categories].map((c) => (
+              {[{ id: null as number | null, name: "كل الفئات" }, ...categories].map((c) => (
                 <button
                   key={String(c.id)}
                   type="button"

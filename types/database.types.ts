@@ -169,6 +169,10 @@ export interface ProductRow extends BaseEntity {
   sale_type: string;
   /** 1 = المنتج ده بيتباع بأحجام (نية صريحة مش عدّ مشتق) — الحجم إجباري في البيع */
   has_sizes: number;
+  /** 1 = خدمة (مالهاش رصيد بضاعة، بس وصفتها بتخصم مواد عادي) */
+  is_service: number;
+  /** مدة الخدمة بالدقايق (0 = مش محددة) */
+  duration_minutes: number;
 }
 
 export interface ProductRecipeRow {

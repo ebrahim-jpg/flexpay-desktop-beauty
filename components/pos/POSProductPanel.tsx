@@ -29,6 +29,8 @@ export function POSProductPanel({ products, categories }: POSProductPanelProps) 
   const addItem = useCartStore((s) => s.addItem);
 
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  // فلتر النوع — صالون التجميل كتالوجه خدمات في الأساس والمنتجات جنبها
+  const [kind, setKind] = useState<"all" | "service" | "product">("all");
   const [search, setSearch] = useState("");
   const [modifierProduct, setModifierProduct] = useState<ProductDTO | null>(null);
   const [sizeProduct, setSizeProduct] = useState<ProductDTO | null>(null);
@@ -97,13 +99,15 @@ export function POSProductPanel({ products, categories }: POSProductPanelProps) 
     const q = search.trim().toLowerCase();
     return products.filter((p) => {
       const inCat = selectedCategory === null || p.category_id === selectedCategory;
+      const inKind =
+        kind === "all" || (kind === "service" ? p.is_service : !p.is_service);
       const match =
         !q ||
         p.name.toLowerCase().includes(q) ||
         (p.barcode ?? "").toLowerCase().includes(q);
-      return inCat && match;
+      return inCat && inKind && match;
     });
-  }, [products, selectedCategory, search]);
+  }, [products, selectedCategory, kind, search]);
 
   // Enter في البحث:
   // - البحث فاضي → افتح الحساب (لو السلة فيها أصناف)
@@ -138,10 +142,17 @@ export function POSProductPanel({ products, categories }: POSProductPanelProps) 
         />
       </div>
 
+      {/* النوع: خدمات ولا منتجات — الصالون بيبيع الاتنين من نفس الشاشة */}
+      <div className="flex gap-2">
+        <CategoryPill label="الكل" active={kind === "all"} onClick={() => setKind("all")} />
+        <CategoryPill label="خدمات" active={kind === "service"} onClick={() => setKind("service")} />
+        <CategoryPill label="منتجات" active={kind === "product"} onClick={() => setKind("product")} />
+      </div>
+
       {/* تبويبات الفئات — بتلفّ للسطر اللي بعده لما تكتر (بدل ما تختفي في تمرير أفقي) */}
       <div className="flex flex-wrap gap-2 pb-1">
         <CategoryPill
-          label="الكل"
+          label="كل الفئات"
           icon={<LayoutGrid className="h-4 w-4" />}
           active={selectedCategory === null}
           onClick={() => setSelectedCategory(null)}

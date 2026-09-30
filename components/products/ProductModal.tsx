@@ -64,6 +64,9 @@ export function ProductModal({
   const [modifiers, setModifiers] = useState<ModifierGroup[]>([]);
   // المنتج بأحجام: السعر بيتحسب من أرخص حجم فالخانة بتتقفل
   const [hasSizes, setHasSizes] = useState(false);
+  // خدمة (حلاقة/صبغة) ولا منتج على رف — ومدتها بالدقايق
+  const [isService, setIsService] = useState(false);
+  const [duration, setDuration] = useState("");
 
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -84,6 +87,8 @@ export function ProductModal({
     setIsAvailable(editing?.is_available ?? true);
     setModifiers(editing?.modifiers ?? []);
     setHasSizes(editing?.has_sizes ?? false);
+    setIsService(editing?.is_service ?? false);
+    setDuration(editing?.duration_minutes ? String(editing.duration_minutes) : "");
     setImageDataUrl(null);
     setImagePreview(editing?.image ?? null);
     setRemoveImageFlag(false);
@@ -151,6 +156,8 @@ export function ProductModal({
           is_active: isActive,
           is_available: isAvailable,
           sale_type: "piece",
+          is_service: isService,
+          duration_minutes: Number(duration) || 0,
           modifiers,
         };
         if (imageDataUrl) payload.imageDataUrl = imageDataUrl;
@@ -167,6 +174,8 @@ export function ProductModal({
           is_active: isActive,
           is_available: isAvailable,
           sale_type: "piece",
+          is_service: isService,
+          duration_minutes: Number(duration) || 0,
           modifiers,
           imageDataUrl: imageDataUrl ?? undefined,
         };
@@ -299,6 +308,51 @@ export function ProductModal({
 
             {/* ملاحظة: "شيل من الكاشير" (is_active) بقى إجراء مالك فقط من كارت المنتج،
                 مش توجل هنا — عشان مايتخطاش قيد المالك. */}
+            {/* ⚙️ خدمة ولا منتج — ومدتها.
+                ⚠️ الخدمة **برضه بتستهلك مواد** (الصبغة بتخصم صبغة وفويل)،
+                فتاب «الوصفة» بيفضل شغّال زي أي منتج. الفرق في الجرد والتقارير. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>النوع</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={isService ? "outline" : "primary"}
+                    className="flex-1"
+                    onClick={() => setIsService(false)}
+                  >
+                    منتج
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isService ? "primary" : "outline"}
+                    className="flex-1"
+                    onClick={() => setIsService(true)}
+                  >
+                    خدمة
+                  </Button>
+                </div>
+              </div>
+              {isService && (
+                <div className="space-y-1.5">
+                  <Label>المدة (دقايق)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={5}
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    dir="ltr"
+                    className="text-right"
+                    placeholder="٣٠"
+                  />
+                  <p className="text-xs text-text-secondary">
+                    بتتستخدم في المواعيد ومقارنة المدة الفعلية بالمتوقّعة.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-6">
               <label className="flex items-center gap-2">
                 <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />

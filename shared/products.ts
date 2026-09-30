@@ -103,12 +103,24 @@ export interface ProductDTO {
    * وخانة السعر في مودال المنتج بتتقفل (بتتحسب من أرخص حجم).
    */
   has_sizes: boolean;
+  /**
+   * خدمة (حلاقة · صبغة · مساج) مش بضاعة على رف.
+   *
+   * ⚠️ **الخدمة برضه بتستهلك مواد**: الصبغة بتخصم صبغة وفويل من المخزن، فوصفتها
+   * بتشتغل زي أي منتج. العلم ده بيفرّقها في **العرض والجرد والتقارير** بس:
+   * الخدمة مالهاش «رصيد بضاعة» تتعدّ في الجرد، وإيرادها بيتحسب لوحده.
+   */
+  is_service: boolean;
+  /** مدة الخدمة بالدقايق — أساس المواعيد، و٠ = مش محددة */
+  duration_minutes: number;
 }
 
 export interface CreateProductInput {
   name: string;
   category_id: number | null;
   price: number;
+  is_service?: boolean;
+  duration_minutes?: number;
   description?: string | null;
   barcode?: string | null;
   modifiers?: ModifierGroup[];
@@ -123,6 +135,8 @@ export interface UpdateProductInput {
   name?: string;
   category_id?: number | null;
   price?: number;
+  is_service?: boolean;
+  duration_minutes?: number;
   description?: string | null;
   barcode?: string | null;
   modifiers?: ModifierGroup[];

@@ -52,6 +52,8 @@ export class ProductsRepository extends BaseRepository {
       cost_price: row.cost_price,
       profit_margin: this.profitMargin(row.price, row.cost_price),
       has_sizes: row.has_sizes === 1,
+      is_service: row.is_service === 1,
+      duration_minutes: row.duration_minutes ?? 0,
       sale_type: row.sale_type === "weight" ? "weight" : "piece",
     };
   }
@@ -157,10 +159,12 @@ export class ProductsRepository extends BaseRepository {
           `INSERT INTO products (
             local_id, name, description, category_id, price, barcode, image_path,
             is_active, is_available, modifiers, cost_price, sale_type,
+            is_service, duration_minutes,
             created_by, updated_by, created_at, updated_at, sync_status
           ) VALUES (
             @local_id, @name, @description, @category_id, @price, @barcode, @image_path,
             @is_active, @is_available, @modifiers, 0, @sale_type,
+            @is_service, @duration_minutes,
             @actor, @actor, @now, @now, 'pending'
           )`
         )
@@ -175,8 +179,10 @@ export class ProductsRepository extends BaseRepository {
           is_active: input.is_active === false ? 0 : 1,
           is_available: input.is_available === false ? 0 : 1,
           modifiers: JSON.stringify(input.modifiers ?? []),
-          // نسخة البلايستيشن: المنتجات بالقطعة بس (الكيلو للخامات في المخزون مش للبيع)
+          // نسخة التجميل: المنتجات بالقطعة بس (الكيلو للخامات في المخزون مش للبيع)
           sale_type: "piece",
+          is_service: input.is_service === true ? 1 : 0,
+          duration_minutes: Math.max(0, Math.floor(input.duration_minutes ?? 0)),
           actor: actorId,
           now,
         });
@@ -209,6 +215,14 @@ export class ProductsRepository extends BaseRepository {
     if (input.category_id !== undefined) {
       fields.push("category_id = @category_id");
       params.category_id = input.category_id;
+    }
+    if (input.is_service !== undefined) {
+      fields.push("is_service = @is_service");
+      params.is_service = input.is_service ? 1 : 0;
+    }
+    if (input.duration_minutes !== undefined) {
+      fields.push("duration_minutes = @duration_minutes");
+      params.duration_minutes = Math.max(0, Math.floor(input.duration_minutes));
     }
     if (input.price !== undefined) {
       assertNonNegative(input.price, "السعر");
@@ -661,6 +675,10 @@ export class ProductsRepository extends BaseRepository {
       modifiers: this.parseModifiers(row.modifiers),
       cost_price: row.cost_price,
       sale_type: row.sale_type,
+      // ⚠️ المطعم مابيبعتش دي — لازم يتعرّفوا في productSchema على الويب قبل
+      // ما الديسكتوب يبعتهم (Mongoose strict بيرمي المجهول **بصمت**).
+      is_service: row.is_service === 1,
+      duration_minutes: row.duration_minutes ?? 0,
       created_at: row.created_at,
       updated_at: row.updated_at,
     };
