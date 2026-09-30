@@ -1,14 +1,16 @@
 /**
  * إعدادات البناء والتغليف — electron-builder
- * نسخة «مطاعم» (restaurant) — صالة بطاولات + تيك أواي + توصيل + طلبات المتجر. برنامج منفصل عن الكافيه والبلايستيشن. ⚠️ appId و productName هنا **مالهمش علاقة بمجلد البيانات**:
- * appId بيخلّي التثبيت **جنب** نسخة التجزئة مش فوقها، و productName اسم الـexe والاختصار.
+ * نسخة «تجميل وحلاقة» (beauty) — كراسي بجلسات + خدمات بإسناد حلاق + كاشير منتجات
+ * + حجز مواعيد. برنامج منفصل عن المطعم والكافيه. ⚠️ appId و productName هنا
+ * **مالهمش علاقة بمجلد البيانات**: appId بيخلّي التثبيت **جنب** النسخ التانية مش فوقها،
+ * و productName اسم الـexe والاختصار.
  * مجلد البيانات بيتحدد من `name` في package.json + app.setName في main.ts
- * → %APPDATA%/flexpay-desktop-restaurant (شوف scripts/verify-isolation.js).
+ * → %APPDATA%/flexpay-desktop-beauty (شوف scripts/verify-isolation.js).
  * @type {import('electron-builder').Configuration}
  */
 module.exports = {
-  appId: "com.flexpay.restaurant",
-  productName: "FlexPay Restaurant",
+  appId: "com.flexpay.beauty",
+  productName: "FlexPay Beauty",
   directories: {
     output: "release",
   },

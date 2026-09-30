@@ -493,7 +493,10 @@ export interface IpcChannels {
   "bookings:reject": { input: { id: number; reason: string }; output: BookingDTO };
   "bookings:cancel": { input: { id: number; reason: string }; output: BookingDTO };
   "bookings:noShow": { input: number; output: BookingDTO };
-  "bookings:convert": { input: number; output: { booking: BookingDTO; session: GamingSessionDTO } };
+  "bookings:convert": {
+    input: { id: number; staff_id: number };
+    output: { booking: BookingDTO; session: GamingSessionDTO };
+  };
 }
 
 export type IpcChannel = keyof IpcChannels;

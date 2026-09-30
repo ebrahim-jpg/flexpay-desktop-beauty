@@ -70,6 +70,9 @@ export interface SessionItemDTO {
    * الواجهة بتعلّم البند: راح كله ✓ · راح جزء «×٢ (راح ١)» · لسه معلّق.
    */
   sent_qty: number;
+  /** اللي عمل الخدمة دي — عليه بتتحسب عمولته */
+  staff_id: number | null;
+  staff_name: string | null;
 }
 
 /** بند معلّق للمطبخ — بالفرق مش بالكمية الكاملة (قالب التذكرة بياخده زي ما هو) */
@@ -96,6 +99,12 @@ export interface OpenSessionInput {
   room_id: number;
   customer_id?: number | null;
   notes?: string | null;
+  /**
+   * الحلاق/الأخصائي اللي هيشتغل على العميل — **إجباري**.
+   * ⚠️ ده مش «مين فتح الجلسة» (`opened_by`): الكاشير بيفتح والحلاق بيشتغل.
+   * وعليه بتتحدد **عمولته**، فالسيبانه فاضي معناه فلوس بتروح لحد غلط.
+   */
+  staff_id: number;
 }
 
 export interface AddSessionItemInput {
@@ -105,6 +114,11 @@ export interface AddSessionItemInput {
   modifier_option_ids?: string[];
   notes?: string | null;
   variant_id?: number | null;
+  /**
+   * اللي عمل الخدمة دي. **فاضي = بيورث الحلاق الأساسي بتاع الجلسة.**
+   * بيتحدد صراحةً لما حلاق تاني يعمل خدمة في نفس القعدة (سماح الصبغة ومنى الاستشوار).
+   */
+  staff_id?: number | null;
 }
 
 export interface CheckoutSessionInput {
@@ -165,6 +179,9 @@ export interface GamingSessionDTO {
   session_label: string;
   /** عدد دفعات المطبخ اللي راحت للحساب ده — التذكرة الجاية بتبقى «دفعة N+1» */
   kitchen_batches: number;
+  /** الحلاق الأساسي للجلسة — الخدمات بتورثه */
+  staff_id: number | null;
+  staff_name: string | null;
   /** الحساب اللي الطاولة دي اتدمجت فيه (status = merged) */
   merged_into_id: number | null;
   room_id: number;

@@ -16,7 +16,7 @@ const pkg = require(path.join(__dirname, "..", "package.json"));
 
 // نسخة «كافيه» بس — برنامج منفصل ببيانات مستقلة: بيتثبّت **جنب** البلايستيشن و«بلايستيشن + كافيه»
 // مش فوقهم، فلازم مجلد بيانات مختلف عنهم وعن التجزئة.
-const EXPECTED_NAME = "flexpay-desktop-restaurant";
+const EXPECTED_NAME = "flexpay-desktop-beauty";
 const BASE_NAME = "flexpay-desktop"; // اسم المحل العام (التجزئة)
 const GAMING_NAME = "flexpay-desktop-gaming"; // نسخة البلايستيشن
 const GAMING_CAFE_NAME = "flexpay-desktop-gaming-cafe"; // «بلايستيشن + كافيه» اللي اتنسخنا منها
@@ -58,8 +58,8 @@ if (!mainSrc.includes(`const APP_NAME = "${EXPECTED_NAME}"`) || !mainSrc.include
 }
 
 const builder = require(path.join(__dirname, "..", "electron-builder.config.js"));
-if (builder.appId !== "com.flexpay.restaurant") {
-  fail(`appId = "${builder.appId}" والمتوقّع "com.flexpay.restaurant" — appId نسخة تانية = التثبيت بيكتب فوقها.`);
+if (builder.appId !== "com.flexpay.beauty") {
+  fail(`appId = "${builder.appId}" والمتوقّع "com.flexpay.beauty" — appId نسخة تانية = التثبيت بيكتب فوقها.`);
 } else {
   console.log("✓ appId مختلف عن البلايستيشن و«بلايستيشن + كافيه» (بيتثبّت جنبهم).");
 }

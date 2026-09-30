@@ -140,9 +140,10 @@ export function registerRoomBookingsIpc(): void {
    * ⚠️ لو الغرفة عليها جلسة شغّالة، `openSession` بيرمي من الفهرس الفريد ورسالته
    * بتوصل للموظف زي ما هي — القرار يفضل عنده (ينقل الناس ولا يستنى).
    */
-  ipcMain.handle("bookings:convert", (_e, id: number) =>
+  ipcMain.handle("bookings:convert", (_e, input: { id: number; staff_id: number }) =>
     handle(() => {
       const user = requirePos();
+      const { id, staff_id } = input;
       const booking = roomBookingsRepository.getById(id);
       if (!booking) throw new Error("الحجز مش موجود");
       if (booking.room_id == null) {
@@ -154,6 +155,9 @@ export function registerRoomBookingsIpc(): void {
       const session = gamingRepository.openSession(
         {
           room_id: booking.room_id,
+          // ⚠️ الحلاق إجباري في أي جلسة — والحجز مالوش حلاق لسه، فالموظف بيختاره
+          // وقت التحويل. (لو الحجز بقى عند حلاق معيّن بعدين، بياخده من الحجز.)
+          staff_id,
           notes: [booking.customer_name, booking.notes, booking.confirm_note]
             .filter(Boolean)
             .join(" · ") || null,

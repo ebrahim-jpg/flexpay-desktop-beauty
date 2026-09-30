@@ -23,7 +23,7 @@ function stamp(): string {
 
 // مجال النسخة دي — لازم يطابق ختم migration 033 في قاعدة البيانات («كافيه» بس).
 // ⚠️ مش "gaming" ولا "gaming_cafe": كل نسخة برنامج منفصل ببيانات مستقلة (قرار صاحب المشروع).
-const VERTICAL = "restaurant";
+const VERTICAL = "beauty";
 
 function openBackup(file: string): Database.Database {
   try {
@@ -72,7 +72,7 @@ export function registerBackupIpc(): void {
       const opts = {
         title: "حفظ نسخة احتياطية",
         defaultPath: `flexpay-gaming-backup-${stamp()}.fpbackup`,
-        filters: [{ name: "FlexPay Restaurant Backup", extensions: ["fpbackup"] }],
+        filters: [{ name: "FlexPay Beauty Backup", extensions: ["fpbackup"] }],
       };
       const res = win
         ? await dialog.showSaveDialog(win, opts)

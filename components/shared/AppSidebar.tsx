@@ -70,7 +70,7 @@ export function AppSidebar() {
               {shopName}
             </p>
             <p className="text-[11px] font-medium tracking-wide text-sidebar-muted">
-              FlexPay Restaurant
+              FlexPay Beauty
             </p>
           </div>
         )}

@@ -64,6 +64,8 @@ interface SessionRow {
   updated_at: string | null;
   /** عدّاد دفعات المطبخ — التذكرة بتقول «دفعة ٢» */
   kitchen_batches: number;
+  staff_id: number | null;
+  staff_name: string | null;
 }
 
 interface ItemRow {
@@ -77,6 +79,8 @@ interface ItemRow {
   variant_id: number | null;
   /** الكمية اللي راحت للمطبخ من البند ده — المعلّق = quantity - sent_qty */
   sent_qty: number;
+  staff_id: number | null;
+  staff_name: string | null;
 }
 
 export interface Actor {
@@ -288,10 +292,25 @@ export class GamingRepository extends BaseRepository {
     return s;
   }
 
+  /**
+   * الحلاق/الأخصائي — لازم يكون موجود وفعّال ودوره بيشتغل على العملاء.
+   * ⚠️ التحقق في الريبو مش في الواجهة بس: العمولة بتتحسب من الرقم ده، فرقم
+   * مستخدم محذوف أو موقوف معناه عمولة معلّقة في الهوا.
+   */
+  private staffRow(staffId: number): { id: number; name: string } {
+    const row = this.db
+      .prepare("SELECT id, name, is_active FROM users WHERE id = ? AND is_deleted = 0")
+      .get(staffId) as { id: number; name: string; is_active: number } | undefined;
+    if (!row) throw new Error("الموظف غير موجود");
+    if (row.is_active !== 1) throw new Error(`${row.name} موقوف — اختار حد تاني`);
+    return { id: row.id, name: row.name };
+  }
+
   private loadItemRows(sessionId: number): ItemRow[] {
     return this.db
       .prepare(
-        `SELECT id, session_id, product_id, product_name, quantity, modifier_option_ids, notes, variant_id, sent_qty
+        `SELECT id, session_id, product_id, product_name, quantity, modifier_option_ids, notes, variant_id, sent_qty,
+                staff_id, staff_name
          FROM gaming_session_items WHERE session_id = ? ORDER BY id ASC`
       )
       .all(sessionId) as ItemRow[];
@@ -317,6 +336,8 @@ export class GamingRepository extends BaseRepository {
       variant_id: r.variant_id ?? null,
       variant_size: r.variant_id ? (sizesRepository.getById(r.variant_id)?.size ?? null) : null,
       sent_qty: r.sent_qty ?? 0,
+      staff_id: r.staff_id ?? null,
+      staff_name: r.staff_name ?? null,
     };
   }
 
@@ -358,6 +379,8 @@ export class GamingRepository extends BaseRepository {
       session_number: r.session_number,
       session_label: formatSessionNumber(r.session_number),
       kitchen_batches: r.kitchen_batches ?? 0,
+      staff_id: r.staff_id ?? null,
+      staff_name: r.staff_name ?? null,
       merged_into_id: r.merged_into_id ?? null,
       room_id: r.room_id,
       room_name: r.room_name,
@@ -462,8 +485,12 @@ export class GamingRepository extends BaseRepository {
 
   openSession(input: OpenSessionInput, actor: Actor): GamingSessionDTO {
     const room = this.roomRow(input.room_id);
-    if (!room || room.is_active !== 1) throw new Error("الطاولة مش موجودة أو متوقفة");
-    if (room.kind !== TABLE) throw new Error("النسخة دي للكافيه — مفيش غرف، افتح الحساب على طاولة");
+    if (!room || room.is_active !== 1) throw new Error("الكرسي مش موجود أو متوقف");
+    if (room.kind !== TABLE) throw new Error("النسخة دي للتجميل — افتح الجلسة على كرسي");
+
+    // ⚠️ **الحلاق إجباري.** عليه بتتحسب عمولته، فجلسة بلا حلاق = فلوس مش معروف
+    // صاحبها. وده **مش** `opened_by` (الكاشير بيفتح والحلاق بيشتغل).
+    const staff = this.staffRow(input.staff_id);
 
     const customerName =
       input.customer_id != null ? (customersRepository.getById(input.customer_id)?.name ?? null) : null;
@@ -478,9 +505,10 @@ export class GamingRepository extends BaseRepository {
         const res = this.db
           .prepare(
             `INSERT INTO gaming_sessions (local_id, kind, session_number, room_id, room_name, status, started_at,
-               customer_id, customer_name, opened_by, opened_by_name, notes, business_date, created_at, updated_at, sync_status)
+               customer_id, customer_name, opened_by, opened_by_name, staff_id, staff_name,
+               notes, business_date, created_at, updated_at, sync_status)
              VALUES (@local_id, 'table', @n, @room_id, @room_name, 'open', @now, @customer_id, @customer_name,
-               @actor_id, @actor_name, @notes, @bd, @now, @now, 'pending')`
+               @actor_id, @actor_name, @staff_id, @staff_name, @notes, @bd, @now, @now, 'pending')`
           )
           .run({
             local_id: this.newLocalId(),
@@ -492,6 +520,8 @@ export class GamingRepository extends BaseRepository {
             customer_name: customerName,
             actor_id: actor.id,
             actor_name: actor.name,
+            staff_id: staff.id,
+            staff_name: staff.name,
             notes: input.notes?.trim() || null,
             bd: toBusinessDate(new Date(now), businessDayStart),
           });
@@ -558,6 +588,17 @@ export class GamingRepository extends BaseRepository {
     const variantId = input.variant_id ?? null;
     this.validateItem(input.product_id, input.quantity, optionIds, notes, variantId);
 
+    // ⚠️ **الخدمة بتورث الحلاق الأساسي** لو الموظف مااختارش حد. بيتحدد صراحةً بس
+    // لما حلاق تاني يعمل خدمة في نفس القعدة (سماح الصبغة ومنى الاستشوار) — وده
+    // اللي بيخلّي العمولة دقيقة ١٠٠٪ بلمسة واحدة في الغالب.
+    const sessionRow = this.sessionRow(input.session_id)!;
+    const itemStaff =
+      input.staff_id != null
+        ? this.staffRow(input.staff_id)
+        : sessionRow.staff_id != null
+          ? { id: sessionRow.staff_id, name: sessionRow.staff_name ?? "" }
+          : null;
+
     const product = this.db.prepare("SELECT name FROM products WHERE id = ?").get(input.product_id) as
       | { name: string }
       | undefined;
@@ -566,15 +607,22 @@ export class GamingRepository extends BaseRepository {
     return this.transaction(() => {
       // ⚠️ الحجم جزء من مفتاح التجميع: من غيره «بيتزا سمول» و«بيتزا لارج» على نفس
       // الطاولة كانوا بيتلمّوا في بند واحد بسعر واحد.
+      // ⚠️ الحلاق جزء من مفتاح التجميع: نفس الخدمة بحلاقين مختلفين = **بندين**،
+      // وإلا العمولة بتروح كلها لواحد منهم.
       const existing = this.db
         .prepare(
           `SELECT id, quantity FROM gaming_session_items
            WHERE session_id = ? AND product_id = ? AND modifier_option_ids = ? AND COALESCE(notes, '') = ?
-             AND COALESCE(variant_id, 0) = ?`
+             AND COALESCE(variant_id, 0) = ? AND COALESCE(staff_id, 0) = ?`
         )
-        .get(input.session_id, input.product_id, optionsJson, notes ?? "", variantId ?? 0) as
-        | { id: number; quantity: number }
-        | undefined;
+        .get(
+          input.session_id,
+          input.product_id,
+          optionsJson,
+          notes ?? "",
+          variantId ?? 0,
+          itemStaff?.id ?? 0
+        ) as { id: number; quantity: number } | undefined;
       if (existing) {
         const qty = existing.quantity + input.quantity;
         this.validateItem(input.product_id, qty, optionIds, notes, variantId);
@@ -583,8 +631,8 @@ export class GamingRepository extends BaseRepository {
         this.db
           .prepare(
             `INSERT INTO gaming_session_items (local_id, session_id, product_id, product_name, quantity,
-               modifier_option_ids, notes, variant_id, added_by, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+               modifier_option_ids, notes, variant_id, staff_id, staff_name, added_by, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .run(
             this.newLocalId(),
@@ -595,6 +643,8 @@ export class GamingRepository extends BaseRepository {
             optionsJson,
             notes,
             variantId,
+            itemStaff?.id ?? null,
+            itemStaff?.name ?? null,
             actor.id,
             this.now()
           );
@@ -736,6 +786,10 @@ export class GamingRepository extends BaseRepository {
   ): CreateOrderResult {
     const isFree = input.is_free === true;
     const orderItems = this.orderItems(items);
+    // ⚠️ **العمولة**: لقطة «مين عمل إيه» بتتحوّل لـ`order_sellers` مع الفاتورة.
+    // نصيب كل واحد = **مجموع أسعار بنوده بالظبط** — مش تقسيم بالفئات ولا بالتساوي.
+    // (نسخة التجزئة بتسند لكل البائعين الحاضرين؛ هنا الإسناد **صريح** فأدق منها.)
+    const staffShares = this.staffShares(items);
     // غير الكاش: المدفوع = الإجمالي بالظبط (مفيش «باقي» في الكارت/المحفظة)
     let amountPaid = input.amount_paid;
     if (!isFree && input.payment_method !== "cash") {
@@ -760,10 +814,37 @@ export class GamingRepository extends BaseRepository {
         notes: input.notes?.trim() || `${formatSessionNumber(s.session_number)} — ${s.room_name}`,
         source: TABLE_SESSION_SOURCE,
         session_id: s.id,
+        sellers: staffShares,
       },
       actor.id,
       actor.name
     );
+  }
+
+  /**
+   * نصيب كل حلاق من الجلسة = مجموع أسعار بنوده.
+   * التسعير بيتحسب من `calculateTotals` (سيرفر-سايد) عشان يطابق الفاتورة بالحرف —
+   * ممنوع الواجهة تحسب نصيب موازي.
+   */
+  private staffShares(items: SessionItemDTO[]): { id: number; name: string; amount: number }[] {
+    const by = new Map<number, { id: number; name: string; amount: number }>();
+    for (const it of items) {
+      if (it.staff_id == null) continue;
+      let amount = 0;
+      try {
+        amount = ordersRepository.calculateTotals({
+          items: this.orderItems([it]),
+          discount_type: "none",
+          discount_value: 0,
+        }).subtotal;
+      } catch {
+        /* صنف اتشال/نفد — بيبان وقت الحساب */
+      }
+      const cur = by.get(it.staff_id);
+      if (cur) cur.amount = round2(cur.amount + amount);
+      else by.set(it.staff_id, { id: it.staff_id, name: it.staff_name ?? "—", amount: round2(amount) });
+    }
+    return [...by.values()];
   }
 
   private closeSession(s: SessionRow, at: string, actor: Actor, orderId: number, customerId: number | null): void {

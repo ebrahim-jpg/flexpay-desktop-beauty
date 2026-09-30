@@ -385,8 +385,27 @@ export class OrdersRepository extends BaseRepository {
         });
       }
 
-      // ⚠️ نسخة البلايستيشن: مفيش «بائعين» → مابنسجّلش لقطة البائعين الحاضرين (order_sellers).
-      // الجدول والقراءة (loadSellers) فاضلين عشان الفواتير القديمة وعقد المزامنة مايتكسروش.
+      // ⑤·٥ لقطة الإسناد — **عمولة الحلاقين**.
+      //
+      // ⚠️ بتتكتب من `input.sellers` اللي جاي **صريح** من الجلسة (مين عمل أنهي خدمة)،
+      // مش من البائعين الحاضرين زي التجزئة. لو مفيش إسناد (بيعة كاشير عادية لمنتج)
+      // مابنكتبش حاجة — والجدول يفضل فاضي زي ما كان.
+      if (input.sellers && input.sellers.length > 0) {
+        const insertSeller = this.db.prepare(
+          `INSERT INTO order_sellers (local_id, order_id, seller_id, seller_name, attributed_amount, created_at)
+           VALUES (@local_id, @order_id, @seller_id, @seller_name, @attributed_amount, @now)`
+        );
+        for (const sl of input.sellers) {
+          insertSeller.run({
+            local_id: this.newLocalId(),
+            order_id: orderId,
+            seller_id: sl.id,
+            seller_name: sl.name,
+            attributed_amount: sl.amount,
+            now: nowISO,
+          });
+        }
+      }
 
       // ⑥ خصم المخزون تلقائياً
       inventoryRepository.deductForOrder(

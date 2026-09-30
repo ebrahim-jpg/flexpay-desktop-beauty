@@ -10,13 +10,13 @@ import { initSyncEngine, getSyncEngine } from "./sync/sync-engine";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// ===== عزل مجلد البيانات (نسخة «كافيه») =====
+// ===== عزل مجلد البيانات (نسخة «تجميل») =====
 // سكربت الـdev بيشغّل إلكترون **بمسار ملف** (dist-electron/electron/main.js)، وساعتها
 // إلكترون مابيقراش package.json والاسم بيرجع "Electron" → البيانات تروح
 // %APPDATA%/Electron، وده مجلد **مشترك** مع أي نسخة تانية شغّالة dev = خلط بيانات المجالات.
 // setName بيقفل ده نهائياً ويضمن العزل مهما كانت طريقة التشغيل.
 // لازم يتنادى **قبل** أول app.getPath("userData").
-const APP_NAME = "flexpay-desktop-restaurant";
+const APP_NAME = "flexpay-desktop-beauty";
 const USER_DATA_DIR = isDev ? `${APP_NAME}-dev` : APP_NAME;
 app.setName(USER_DATA_DIR);
 
@@ -138,13 +138,13 @@ function assertVerticalIsolation(userData: string): void {
       `• حقل "name" في package.json اتغيّر أو اتدمج من النسخة الأساسية.\n` +
       `• نداء app.setName() اتشال أو اتنقل بعد أول getPath("userData").\n\n` +
       `التشغيل اتوقف عشان مانكتبش في قاعدة بيانات مجال تاني.`;
-    dialog.showErrorBox("FlexPay Restaurant — خطأ عزل قاتل", msg);
+    dialog.showErrorBox("FlexPay Beauty — خطأ عزل قاتل", msg);
     throw new Error(msg);
   }
 }
 
 app.whenReady().then(() => {
-  // تهيئة قاعدة البيانات في %APPDATA%/flexpay-desktop-restaurant (معزولة عن باقي المجالات)
+  // تهيئة قاعدة البيانات في %APPDATA%/flexpay-desktop-beauty (معزولة عن باقي المجالات)
   const userData = app.getPath("userData");
   assertVerticalIsolation(userData);
   setUserDataDir(userData);
