@@ -80,6 +80,15 @@ function logOrder(
 export function registerGamingIpc(): void {
   ipcMain.handle("gaming:board", () => handle(() => (requirePos(), gamingRepository.getBoard())));
 
+  // تقرير أداء الحلاقين — **للي معاه تقارير بس** (فيه فلوس وعمولات)
+  ipcMain.handle("gaming:stylistPerformance", (_e, input: { from: string; to: string }) =>
+    handle(() => {
+      const user = requireActor();
+      if (!can(user, "canViewReports")) throw new Error("مالكش صلاحية التقارير");
+      return gamingRepository.stylistPerformance(input.from, input.to);
+    })
+  );
+
   ipcMain.handle("gaming:summary:today", () => handle(() => (requireActor(), gamingRepository.todaySummary())));
 
   ipcMain.handle("gaming:rooms:list", (_e, input?: { includeInactive?: boolean }) =>

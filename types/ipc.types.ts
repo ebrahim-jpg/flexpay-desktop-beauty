@@ -49,6 +49,7 @@ import type {
   AddSessionItemInput,
   CheckoutSessionInput,
   GamingBoard,
+  StylistPerformanceRow,
   SplitCheckoutInput,
   GamingRoomDTO,
   GamingSessionDTO,
@@ -422,6 +423,11 @@ export interface IpcChannels {
 
   // ===== الطاولات (نسخة «كافيه» — أسماء القنوات متوارثة من البلايستيشن) =====
   "gaming:board": { input: void; output: GamingBoard };
+  /** أداء الحلاقين في فترة — إيراد ووقت وإيراد الساعة */
+  "gaming:stylistPerformance": {
+    input: { from: string; to: string };
+    output: StylistPerformanceRow[];
+  };
   "gaming:summary:today": { input: void; output: GamingTodaySummary };
   "gaming:rooms:list": { input: { includeInactive?: boolean }; output: GamingRoomDTO[] };
   "gaming:rooms:save": { input: SaveRoomInput; output: GamingRoomDTO };

@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SalesReport } from "@/components/reports/SalesReport";
 import { InventoryReport } from "@/components/reports/InventoryReport";
+import { StylistReport } from "@/components/reports/StylistReport";
 import { useAuthStore } from "@/store/auth.store";
 
 export default function ReportsPage() {
@@ -28,17 +29,21 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <PageHeader
         title="التقارير"
-        description="المبيعات والمخزون — آخر 30 يوم. التقارير التاريخية الكاملة في السحابة."
+        description="المبيعات وأداء الحلاقين والمخزون — آخر 30 يوم. التقارير التاريخية الكاملة في السحابة."
       />
 
       <Tabs defaultValue="sales">
         <TabsList>
           <TabsTrigger value="sales">تقرير المبيعات</TabsTrigger>
+          <TabsTrigger value="stylists">أداء الحلاقين</TabsTrigger>
           <TabsTrigger value="inventory">تقرير المخزون</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sales">
           <SalesReport />
+        </TabsContent>
+        <TabsContent value="stylists">
+          <StylistReport />
         </TabsContent>
         <TabsContent value="inventory">
           <InventoryReport />

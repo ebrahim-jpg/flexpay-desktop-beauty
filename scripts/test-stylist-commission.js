@@ -144,7 +144,26 @@ try {
     "ولقطة الاسم محفوظة (الفاتورة القديمة تفضل مقروءة لو الموظف اتشال)"
   );
 
-  console.log(process.exitCode ? "\n❌ فيه فحوص فشلت" : "\n✅ عمولة الحلاقين سليمة");
+  // ===== ⑦ تقرير أداء الحلاقين =====
+  console.log("\n— تقرير الأداء —");
+  const bd = db.prepare("SELECT business_date FROM orders WHERE id = ?").get(res.order.id).business_date;
+  const perf = gamingRepository.stylistPerformance(bd, bd);
+  ok(perf.length === 2, `التقرير فيه الحلاقين الاتنين (الفعلي ${perf.length})`);
+  const pr = (id) => perf.find((x) => x.staff_id === id);
+  ok(
+    near(pr(samah).revenue, 380),
+    `إيراد سماح ٣٨٠ — من order_sellers مش من بنود الجلسة (الفعلي ${pr(samah).revenue})`
+  );
+  ok(near(pr(mona).revenue, 180), `وإيراد منى ١٨٠ (الفعلي ${pr(mona).revenue})`);
+  ok(pr(samah).sessions === 1, "وسماح كانت الحلاق الأساسي في جلسة واحدة");
+  ok(
+    pr(mona).sessions === 0,
+    "ومنى ماكانتش أساسية في أي جلسة — بس ليها خدمات وإيراد"
+  );
+  ok(pr(samah).services === 2 && pr(mona).services === 2, "وكل واحدة ليها خدمتين");
+  ok(perf[0].staff_id === samah, "والترتيب بالإيراد (الأعلى الأول)");
+
+  console.log(process.exitCode ? "\n❌ فيه فحوص فشلت" : "\n✅ عمولة الحلاقين وتقريرهم سليمين");
 } finally {
   try {
     closeDatabase();

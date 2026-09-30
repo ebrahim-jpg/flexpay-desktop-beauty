@@ -14,6 +14,7 @@ import {
   SplitSquareHorizontal,
   UserRound,
   UtensilsCrossed,
+  Zap,
   XCircle,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -25,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddDrinksDialog } from "@/components/gaming/AddDrinksDialog";
 import { StaffPicker } from "@/components/beauty/StaffPicker";
+import { QuickSessionDialog } from "@/components/beauty/QuickSessionDialog";
 import { SessionCheckoutModal } from "@/components/gaming/SessionCheckoutModal";
 import { SplitBillDialog } from "@/components/gaming/SplitBillDialog";
 import { TablesManager } from "@/components/gaming/TablesManager";
@@ -72,6 +74,8 @@ export default function TablesPage() {
   const [busyTable, setBusyTable] = useState<number | null>(null);
   // الكرسي اللي بنفتح عليه جلسة — المنتقي بيسأل مين هيشتغل قبل الفتح
   const [openingTable, setOpeningTable] = useState<GamingRoomDTO | null>(null);
+  // الكرسي اللي بنعمل عليه جلسة سريعة
+  const [quickFor, setQuickFor] = useState<GamingRoomDTO | null>(null);
 
   const [ordersFor, setOrdersFor] = useState<GamingSessionDTO | null>(null);
   const [checkoutFor, setCheckoutFor] = useState<GamingSessionDTO | null>(null);
@@ -301,10 +305,23 @@ export default function TablesPage() {
                       onMute={() => setMuted((m) => new Set(m).add(bookingMuteKey(nextBooking.booking)))}
                     />
                   )}
-                  <Button className="mt-4" disabled={busy} onClick={() => setOpeningTable(table)}>
-                    <Play />
-                    افتح حساب
-                  </Button>
+                  <div className="mt-4 flex gap-2">
+                    <Button className="flex-1" disabled={busy} onClick={() => setOpeningTable(table)}>
+                      <Play />
+                      افتح جلسة
+                    </Button>
+                    {/* ⚠️ الجلسة السريعة: خدمة بتخلص في ١٥ دقيقة والزبون واقف —
+                        حلاق + خدمة + حساب في دوسة، **والزمن بيتسجّل زي أي جلسة**. */}
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => setQuickFor(table)}
+                      title="حلاق + خدمة + حساب على طول"
+                    >
+                      <Zap />
+                      سريعة
+                    </Button>
+                  </div>
                 </div>
               );
             }
@@ -437,6 +454,15 @@ export default function TablesPage() {
           const t = openingTable;
           setOpeningTable(null);
           if (t) void openTable(t, staff.id);
+        }}
+      />
+
+      <QuickSessionDialog
+        chair={quickFor}
+        onOpenChange={(o) => !o && setQuickFor(null)}
+        onDone={(_s, orderId) => {
+          void load();
+          void invoke("orders:getById", orderId).then((o) => o && setReceipt(o));
         }}
       />
 

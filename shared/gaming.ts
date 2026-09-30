@@ -145,6 +145,30 @@ export interface GamingBoard {
   sessions: GamingSessionDTO[]; // المفتوحة بس
 }
 
+/**
+ * أداء الحلاق في فترة — **ده سبب اختيار الجلسات من الأصل**.
+ *
+ * الكاشير المباشر بيقدر يقول «عمل بكام»؛ الجلسة بتقدر تقول كمان **«قعد قد إيه»**،
+ * ومن الاتنين بيطلع:
+ *   • إيراد الساعة الفعلي لكل حلاق (مين بيجيب فلوس بوقته ومين لأ)
+ *   • متوسط مدة كل خدمة فعلياً → أساس المواعيد
+ *   • الإشغال: ساعات شغل / ساعات المحل
+ */
+export interface StylistPerformanceRow {
+  staff_id: number;
+  staff_name: string;
+  /** عدد الجلسات اللي كان الحلاق الأساسي فيها */
+  sessions: number;
+  /** عدد الخدمات المسجّلة باسمه (ممكن تزيد عن الجلسات) */
+  services: number;
+  /** نصيبه من الفواتير (من order_sellers) */
+  revenue: number;
+  /** مجموع دقايق الجلسات اللي كان أساسي فيها */
+  minutes: number;
+  /** إيراد الساعة = revenue ÷ (minutes/60) — صفر لو مفيش وقت */
+  revenue_per_hour: number;
+}
+
 export interface GamingTodaySummary {
   business_date: string;
   open_count: number;

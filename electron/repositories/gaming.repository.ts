@@ -19,6 +19,7 @@ import {
   type SaveRoomInput,
   type SessionItemDTO,
   type SessionQuote,
+  type StylistPerformanceRow,
   type OpenSessionInput,
   type AddSessionItemInput,
   type CheckoutSessionInput,
@@ -459,6 +460,78 @@ export class GamingRepository extends BaseRepository {
       .prepare("SELECT * FROM gaming_sessions WHERE status = 'open' AND is_deleted = 0 ORDER BY started_at ASC")
       .all() as SessionRow[];
     return { tables: this.listRooms(false), sessions: open.map((s) => this.toDTO(s)) };
+  }
+
+  /**
+   * أداء الحلاقين في فترة (تاريخين تجاريين شاملين).
+   *
+   * ⚠️ **الإيراد من `order_sellers` مش من بنود الجلسة**: ده الرقم اللي اتسجّل على
+   * الفاتورة فعلاً (بعد ما التسعير اتحسب سيرفر-سايد)، فيطابق الفلوس بالحرف.
+   * والوقت من الجلسات اللي الحلاق كان **أساسي** فيها — الخدمة الواحدة في جلسة
+   * حلاق تاني مالهاش وقت خاص بيها.
+   */
+  stylistPerformance(from: string, to: string): StylistPerformanceRow[] {
+    const money = this.db
+      .prepare(
+        `SELECT os.seller_id AS id, os.seller_name AS name,
+                COALESCE(SUM(os.attributed_amount), 0) AS revenue
+           FROM order_sellers os
+           JOIN orders o ON o.id = os.order_id
+          WHERE o.business_date BETWEEN ? AND ?
+            AND o.is_deleted = 0 AND o.status != 'cancelled' AND o.is_free = 0
+          GROUP BY os.seller_id, os.seller_name`
+      )
+      .all(from, to) as { id: number; name: string | null; revenue: number }[];
+
+    const time = this.db
+      .prepare(
+        `SELECT staff_id AS id, staff_name AS name, COUNT(*) AS sessions,
+                COALESCE(SUM(actual_minutes), 0) AS minutes
+           FROM gaming_sessions
+          WHERE business_date BETWEEN ? AND ? AND status = 'closed' AND staff_id IS NOT NULL
+          GROUP BY staff_id, staff_name`
+      )
+      .all(from, to) as { id: number; name: string | null; sessions: number; minutes: number }[];
+
+    const services = this.db
+      .prepare(
+        `SELECT i.staff_id AS id, COUNT(*) AS services
+           FROM gaming_session_items i
+           JOIN gaming_sessions s ON s.id = i.session_id
+          WHERE s.business_date BETWEEN ? AND ? AND i.staff_id IS NOT NULL
+          GROUP BY i.staff_id`
+      )
+      .all(from, to) as { id: number; services: number }[];
+
+    const rows = new Map<number, StylistPerformanceRow>();
+    const row = (id: number, name: string | null) => {
+      let r = rows.get(id);
+      if (!r) {
+        r = {
+          staff_id: id,
+          staff_name: name ?? "—",
+          sessions: 0,
+          services: 0,
+          revenue: 0,
+          minutes: 0,
+          revenue_per_hour: 0,
+        };
+        rows.set(id, r);
+      }
+      if (name && r.staff_name === "—") r.staff_name = name;
+      return r;
+    };
+    for (const m of money) row(m.id, m.name).revenue = round2(m.revenue);
+    for (const t of time) {
+      const r = row(t.id, t.name);
+      r.sessions = t.sessions;
+      r.minutes = round2(t.minutes);
+    }
+    for (const sv of services) row(sv.id, null).services = sv.services;
+    for (const r of rows.values()) {
+      r.revenue_per_hour = r.minutes > 0 ? round2(r.revenue / (r.minutes / 60)) : 0;
+    }
+    return [...rows.values()].sort((a, b) => b.revenue - a.revenue);
   }
 
   todaySummary(): GamingTodaySummary {
