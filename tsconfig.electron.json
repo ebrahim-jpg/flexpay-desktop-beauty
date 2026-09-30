@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "outDir": "dist-electron",
+    "rootDir": ".",
+    "types": ["node", "better-sqlite3"]
+  },
+  "include": ["electron/**/*.ts", "shared/**/*.ts", "types/**/*.ts"],
+  "exclude": ["node_modules", "dist-electron", "out", ".next"]
+}

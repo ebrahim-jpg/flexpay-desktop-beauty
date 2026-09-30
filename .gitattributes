@@ -1,0 +1,14 @@
+# توحيد نهايات الأسطر على LF لكل الملفات النصية (تجنّب اختلاف ويندوز/غيره)
+* text=auto eol=lf
+
+# الملفات الثنائية
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.node binary

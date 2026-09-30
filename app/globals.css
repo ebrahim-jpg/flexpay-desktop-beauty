@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== نظام الألوان — Light Mode (هوية أخضر فخم) ===== */
+:root {
+  --color-primary: #16322d; /* أخضر غابة عميق */
+  --color-primary-foreground: #f4f7f5;
+  --color-accent: #bd9a63; /* ذهبي راقٍ مكتوم */
+  --color-accent-foreground: #2a2113;
+  --color-background: #f4f1ea; /* أوف وايت دافئ نظيف */
+  --color-surface: #ffffff;
+  --color-surface-secondary: #efebe2;
+  --color-text-primary: #1a1c1b;
+  --color-text-secondary: #6a716d;
+  --color-border: #e7e1d5;
+  --color-success: #2f6f53;
+  --color-warning: #b07d1c;
+  --color-danger: #bb3b32;
+  --color-info: #2563a8;
+
+  /* لوحة السايد بار — شريط القيادة الداكن */
+  --color-sidebar: #122a26; /* أغمق من الأساسي للعمق */
+  --color-sidebar-foreground: #e9efea;
+  --color-sidebar-muted: #93a8a0; /* نص خامل (سيج مكتوم) */
+  --color-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --color-sidebar-active: rgba(255, 255, 255, 0.1);
+  --color-sidebar-border: rgba(255, 255, 255, 0.07);
+  --color-sidebar-accent: #cba86a; /* ذهبي للمؤشر النشط */
+
+  --radius: 0.7rem;
+
+  /* ظلال متدرّجة ناعمة — إحساس فخم بدون ثِقل */
+  --shadow-sm: 0 1px 2px rgba(20, 28, 25, 0.05), 0 1px 1px rgba(20, 28, 25, 0.03);
+  --shadow-md: 0 4px 14px -3px rgba(20, 28, 25, 0.09), 0 2px 6px -2px rgba(20, 28, 25, 0.05);
+  --shadow-lg: 0 16px 40px -10px rgba(20, 28, 25, 0.16), 0 6px 16px -6px rgba(20, 28, 25, 0.08);
+  --shadow-gold: 0 6px 18px -6px rgba(189, 154, 99, 0.45);
+
+  --font-cairo: "Segoe UI", "Tahoma", "Cairo", system-ui, sans-serif;
+}
+
+/* ===== نظام الألوان — Dark Mode ===== */
+.dark {
+  --color-primary: #4f9d86; /* أخضر مضيء للتباين على الداكن */
+  --color-primary-foreground: #07140f;
+  --color-accent: #d3b582;
+  --color-accent-foreground: #1a140a;
+  --color-background: #0d1714; /* أخضر-فحمي عميق */
+  --color-surface: #142420;
+  --color-surface-secondary: #1c302b;
+  --color-text-primary: #eef2f0;
+  --color-text-secondary: #93a39c;
+  --color-border: #28403a;
+  --color-success: #4caf86;
+  --color-warning: #d49a3a;
+  --color-danger: #e0685e;
+  --color-info: #5b9bd8;
+
+  --color-sidebar: #0c1815;
+  --color-sidebar-foreground: #e6ece9;
+  --color-sidebar-muted: #7e938b;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --color-sidebar-active: rgba(255, 255, 255, 0.09);
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-accent: #d3b582;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 14px -3px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px -10px rgba(0, 0, 0, 0.5), 0 6px 16px -6px rgba(0, 0, 0, 0.35);
+  --shadow-gold: 0 6px 18px -6px rgba(211, 181, 130, 0.3);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    direction: rtl;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-cairo);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* عناوين أنحف تتبّعاً — إحساس راقٍ */
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+  /* انتقالات سريعة فقط */
+  button,
+  a,
+  input,
+  [role="button"] {
+    transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+    transition-duration: 150ms;
+  }
+}
+
+@layer utilities {
+  /* شريط تمرير هادئ ورفيع */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+    background-clip: padding-box;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  /* خلفية متدرّجة خفيفة للبطاقات البارزة */
+  .bg-gradient-surface {
+    background-image: linear-gradient(160deg, var(--color-surface) 0%, var(--color-surface-secondary) 140%);
+  }
+}
+
+/* ===== الطباعة: تظهر الفاتورة أو التقرير فقط ===== */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-receipt,
+  .print-receipt *,
+  .print-report,
+  .print-report * {
+    visibility: visible;
+  }
+  .print-receipt {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    width: 80mm;
+    color: #000;
+    background: #fff;
+  }
+  .print-report {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 16px;
+    color: #000;
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

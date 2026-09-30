@@ -1,0 +1,174 @@
+import { ipcMain } from "electron";
+import { ordersRepository } from "../repositories/orders.repository";
+import { settingsRepository } from "../repositories/settings.repository";
+import { auditRepository } from "../repositories/audit.repository";
+import { usersRepository } from "../repositories/users.repository";
+import { getCurrentActor } from "./session";
+import { requireReports } from "./access";
+import { effectivePermissions } from "../../shared/permissions";
+import { formatReceiptNumber } from "../../shared/orders";
+import { buildReceiptHtml } from "../lib/receipt-html";
+import { printReceipt, printKitchenTicket } from "../lib/printer";
+import type { IpcResult } from "../../types/ipc.types";
+import type {
+  CreateOrderInput,
+  CalculateTotalsInput,
+  CancelOrderInput,
+} from "../../shared/orders";
+import type { SafeUser } from "../../types/ipc.types";
+
+function handle<T>(fn: () => T): IpcResult<T> {
+  try {
+    return { ok: true, data: fn() };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "حصل خطأ غير متوقع";
+    return { ok: false, error: message };
+  }
+}
+
+async function handleAsync<T>(fn: () => Promise<T>): Promise<IpcResult<T>> {
+  try {
+    return { ok: true, data: await fn() };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "حصل خطأ غير متوقع";
+    return { ok: false, error: message };
+  }
+}
+
+function requireActor(): SafeUser {
+  const id = getCurrentActor();
+  if (id == null) throw new Error("لازم تسجّل دخول الأول");
+  const user = usersRepository.getById(id);
+  if (!user) throw new Error("المستخدم غير موجود");
+  return user;
+}
+
+function can(user: SafeUser, key: keyof SafeUser["permissions"]): boolean {
+  if (user.role === "owner") return true;
+  return !!effectivePermissions(user.role, user.permissions)[key];
+}
+export function registerOrdersIpc(): void {
+  ipcMain.handle("orders:calculateTotals", (_e, input: CalculateTotalsInput) =>
+    handle(() => ordersRepository.calculateTotals(input))
+  );
+
+  ipcMain.handle("orders:create", (_e, input: CreateOrderInput) =>
+    handle(() => {
+      const user = requireActor();
+
+      // التحقق من صلاحية الخصم
+      const hasDiscount =
+        input.discount_type !== "none" && input.discount_value > 0;
+      if (hasDiscount && !can(user, "canGiveDiscount")) {
+        throw new Error("مالكش صلاحية إعطاء خصم");
+      }
+
+      const result = ordersRepository.create(input, user.id, user.name);
+
+      auditRepository.log({
+        userId: user.id,
+        userName: user.name,
+        action: `${result.order.is_free ? "فاتورة مجانية" : "إنشاء طلب"} ${result.order.receipt_label}`,
+        entityType: "order",
+        entityId: result.order.id,
+        newValue: {
+          total: result.order.total,
+          items_count: result.order.items.length,
+          payment_method: result.order.payment_method,
+          discount_amount: result.order.discount_amount,
+          is_free: result.order.is_free,
+        },
+      });
+
+      return result;
+    })
+  );
+
+  ipcMain.handle("orders:cancel", (_e, input: CancelOrderInput) =>
+    handle(() => {
+      const user = requireActor();
+      if (!can(user, "canCancelOrder")) {
+        throw new Error("مالكش صلاحية إلغاء الطلبات");
+      }
+      if (!input.reason || !input.reason.trim()) {
+        throw new Error("اكتب سبب الإلغاء");
+      }
+      const before = ordersRepository.getById(input.id);
+      const order = ordersRepository.cancel(input.id, input.reason.trim(), user.id);
+      auditRepository.log({
+        userId: user.id,
+        userName: user.name,
+        action: `إلغاء طلب ${formatReceiptNumber(order.receipt_number)}`,
+        entityType: "order",
+        entityId: order.id,
+        oldValue: { total: before?.total, status: "paid" },
+        newValue: { status: "cancelled", reason: input.reason.trim() },
+      });
+      return order;
+    })
+  );
+
+  // قوايم الفواتير المجمّعة = مبيعات اليوم → للمدير/المالك بس (canViewReports).
+  // فاتورة بعينها (getById) تفضل لأي حد داخل: سجل مشتريات العميل والإيصال.
+  ipcMain.handle("orders:getRecent", (_e, input: { limit?: number }) =>
+    handle(() => {
+      requireReports();
+      return ordersRepository.getRecent(input?.limit ?? 10);
+    })
+  );
+
+  ipcMain.handle("orders:getByDate", (_e, input: { businessDate: string }) =>
+    handle(() => {
+      requireReports();
+      return ordersRepository.getByDate(input.businessDate);
+    })
+  );
+
+  ipcMain.handle("orders:getById", (_e, id: number) =>
+    handle(() => ordersRepository.getById(id))
+  );
+
+  // طباعة الفاتورة صامتة على الطابعة المحددة (يُستدعى تلقائياً بعد البيع)
+  ipcMain.handle("orders:printReceipt", (_e, orderId: number) =>
+    handleAsync(async () => {
+      const order = ordersRepository.getById(orderId);
+      if (!order) throw new Error("الطلب غير موجود");
+      const settings = settingsRepository.get();
+      const html = buildReceiptHtml(order, {
+        shopName: settings.shopName,
+        receiptHeader: settings.receiptHeader,
+        receiptFooter: settings.receiptFooter,
+        currencySymbol: settings.currencySymbol,
+      });
+      return printReceipt(html, settings.printerName);
+    })
+  );
+
+  // تذكرة المطبخ — الشيف بيجهّز منها. **بلا أسعار** وعلى طابعة المطبخ لو متظبطة.
+  // ⚠️ بترجع false بدل ما ترمي لو مفيش أصناف — فشل الطباعة مايوقفش البيع ولا الأوردر.
+  ipcMain.handle("kitchen:printTicket", (_e, input: KitchenTicketPayload) =>
+    handleAsync(async () => {
+      const settings = settingsRepository.get();
+      const actorId = getCurrentActor();
+      const actor = actorId != null ? usersRepository.getById(actorId) : null;
+      return printKitchenTicket(
+        {
+          place: input.place,
+          reference: input.reference ?? null,
+          items: input.items,
+          note: input.note ?? null,
+          staffName: actor?.name ?? null,
+        },
+        settings.kitchenPrinterName ?? settings.printerName,
+        settings.shopName
+      );
+    })
+  );
+}
+
+interface KitchenTicketPayload {
+  place: string;
+  reference?: string | null;
+  items: { quantity: number; name: string; notes?: string | null }[];
+  note?: string | null;
+}
