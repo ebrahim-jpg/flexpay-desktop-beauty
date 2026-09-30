@@ -29,7 +29,7 @@ console.log("\n— التنقّل —");
 const nav = code("components/shared/nav-items.ts");
 const hrefs = [...nav.matchAll(/href:\s*"([^"]+)"/g)].map((m) => m[1]);
 ok(hrefs[0] === "/tables", `«الطاولات» أول عنصر — شاشة البيع الوحيدة (الفعلي ${hrefs[0]})`);
-ok(/label:\s*"الصالة"[\s\S]{0,120}highlight:\s*true/.test(nav), "«الصالة» شاشة بيع مميزة (highlight)");
+ok(/label:\s*"الكراسي"[\s\S]{0,120}highlight:\s*true/.test(nav), "«الكراسي» شاشة بيع مميزة (highlight)");
 
 // ===== ② صفحة الطاولات =====
 console.log("\n— صفحة الطاولات —");
@@ -68,7 +68,7 @@ ok(/"gaming:rooms:list"/.test(bookingsPage) && /party_size/.test(bookingsPage), 
 console.log("\n— قسم الطاولات في التقارير —");
 const sales = code("components/reports/SalesReport.tsx");
 ok(/value="table_session"[^<]*>الطاولات</.test(sales), "تقرير المبيعات: خيار «الطاولات» في فلتر القسم");
-ok(/table_session: "الصالة"/.test(code("shared/orders.ts")), "لافتة مصدر table_session = «الصالة»");
+ok(/table_session: "جلسة"/.test(code("shared/orders.ts")), "لافتة مصدر table_session = «جلسة»");
 
 console.log(failed === 0 ? "\n✅ واجهة الطاولات متوصّلة صح" : `\n❌ ${failed} فحص فشل`);
 process.exit(failed === 0 ? 0 : 1);

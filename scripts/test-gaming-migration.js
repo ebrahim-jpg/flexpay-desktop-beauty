@@ -35,13 +35,13 @@ try {
   const db = getDatabase();
   const LATEST = Math.max(...migrations.map((m) => m.version));
   // «بلايستيشن + كافيه»: 032 الطاولات فوق 031 (اختبارها في test-tables-migration.js)
-  ok(LATEST === 36, `آخر migration = 36 — دفعات المطبخ (الفعلي ${LATEST})`);
+  ok(LATEST === 37, `آخر migration = 37 — مجال التجميل (الفعلي ${LATEST})`);
   const sessCols = db.prepare("PRAGMA table_info(gaming_sessions)").all().map((c) => c.name);
   ok(sessCols.includes("planned_minutes"), "عمود planned_minutes (المدة المحددة) موجود في الجلسات");
   ok(db.pragma("user_version", { simple: true }) === LATEST, "user_version = آخر migration");
   const st = db.prepare("SELECT vertical, gaming_rounding_minutes, gaming_min_minutes FROM settings WHERE id = 1").get();
   // الختم «cafe» (033) — عشان نسخة احتياطية من البرنامج ده ماتترستورش جوّه البلايستيشن أو المشتركة
-  ok(st && st.vertical === "restaurant", `ختم المجال بعد الـseed = restaurant (الفعلي ${st && st.vertical})`);
+  ok(st && st.vertical === "beauty", `ختم المجال بعد الـseed = beauty (الفعلي ${st && st.vertical})`);
   ok(st && st.gaming_rounding_minutes === 1, "التقريب الافتراضي = بالدقيقة");
   ok(st && st.gaming_min_minutes === 0, "الحد الأدنى الافتراضي = صفر");
   for (const t of ["gaming_rooms", "gaming_sessions", "gaming_session_segments", "gaming_session_items"]) {
@@ -102,7 +102,7 @@ try {
   );
   const afterSettings = db1.prepare("SELECT shop_name, tax_rate, vertical, gaming_rounding_minutes FROM settings WHERE id=1").get();
   ok(afterSettings.shop_name === beforeSettings.shop_name, "اسم المحل زي ما هو");
-  ok(afterSettings.vertical === "restaurant", "الصف الموجود اتختم restaurant");
+  ok(afterSettings.vertical === "beauty", "الصف الموجود اتختم beauty");
   ok(afterSettings.gaming_rounding_minutes === 1, "الصف الموجود أخد التقريب الافتراضي");
   ok(db1.prepare("SELECT COUNT(*) c FROM users").get().c === 1, "المستخدمين زي ما هم");
   db1.close();

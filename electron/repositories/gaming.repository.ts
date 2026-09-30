@@ -430,6 +430,10 @@ export class GamingRepository extends BaseRepository {
       opened_by_name: r.opened_by_name,
       closed_by: r.closed_by,
       closed_by_name: r.closed_by_name,
+      // ⚠️ الحلاق اللي شغل على العميل — **مش** `opened_by` (الكاشير بيفتح والحلاق
+      // بيشتغل). الويب بيحوّله `staff_desktop_id` وبيحسب بيه إشغال كل حلاق.
+      staff_id: r.staff_id,
+      staff_name: r.staff_name,
       order_id: r.order_id,
       actual_minutes: r.actual_minutes,
       billed_minutes: 0,

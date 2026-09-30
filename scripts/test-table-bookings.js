@@ -44,6 +44,11 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-table-bookings-"));
         .lastInsertRowid
     );
     const actor = { id: actorId, name: "مدير" };
+    // ⚠️ الجلسة في التجميل مابتتفتحش بلا حلاق — والتحويل من الحجز بيفتح جلسة
+    const stylistId = Number(
+      db.prepare("INSERT INTO users (local_id, name, username, role, is_active) VALUES ('u2','سماح','s','stylist',1)").run()
+        .lastInsertRowid
+    );
     const t1 = gamingRepository.saveRoom({ name: "طاولة 1", area: "داخلي" }, actorId).room;
     const t2 = gamingRepository.saveRoom({ name: "طاولة 2" }, actorId).room;
 
@@ -111,9 +116,12 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-table-bookings-"));
     if (electron && electron.ipcMain) {
       registerRoomBookingsIpc();
       setCurrentActor(actorId);
-      const conv = await handlers.get("bookings:convert")({}, b1.id);
-      ok(conv.ok && conv.data.session.kind === "table" && conv.data.session.room_id === t1.id, `التحويل فتح حساب طاولة 1 (${conv.ok ? "" : conv.error})`);
-      ok(conv.ok && !("planned_minutes" in conv.data.session), "حساب الطاولة من الحجز مالوش مدة");
+      const noStaff = await handlers.get("bookings:convert")({}, { id: b1.id, staff_id: 0 });
+      ok(!noStaff.ok, `التحويل بلا حلاق مرفوض (${noStaff.ok ? "**عدّى**" : noStaff.error})`);
+      const conv = await handlers.get("bookings:convert")({}, { id: b1.id, staff_id: stylistId });
+      ok(conv.ok && conv.data.session.kind === "table" && conv.data.session.room_id === t1.id, `التحويل فتح حساب كرسي 1 (${conv.ok ? "" : conv.error})`);
+      ok(conv.ok && conv.data.session.staff_id === stylistId, "والجلسة اتفتحت باسم الحلاق (العمولة هتمشي صح)");
+      ok(conv.ok && !("planned_minutes" in conv.data.session), "حساب الكرسي من الحجز مالوش مدة");
       const confirmIpc = await handlers.get("bookings:confirm")({}, { id: id("tb2"), note: null });
       ok(!confirmIpc.ok || confirmIpc.data.status === "confirmed", "قناة التأكيد لسه شغّالة");
     } else {

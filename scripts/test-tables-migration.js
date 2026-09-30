@@ -35,7 +35,7 @@ try {
   initDatabase(freshDir);
   const db = getDatabase();
   const LATEST = Math.max(...migrations.map((m) => m.version));
-  ok(LATEST === 36, `آخر migration = 36 — دفعات المطبخ (الفعلي ${LATEST})`);
+  ok(LATEST === 37, `آخر migration = 37 — مجال التجميل (الفعلي ${LATEST})`);
   ok(cols(db, "gaming_rooms").includes("kind") && cols(db, "gaming_rooms").includes("area"), "gaming_rooms: kind + area");
   ok(
     cols(db, "gaming_sessions").includes("kind") && cols(db, "gaming_sessions").includes("merged_into_id"),
@@ -47,7 +47,7 @@ try {
   );
   ok(cols(db, "orders").includes("session_id"), "orders: session_id (ربط كل فواتير الحساب — تقسيم الفاتورة)");
   const st = db.prepare("SELECT vertical FROM settings WHERE id = 1").get();
-  ok(st && st.vertical === "restaurant", `ختم المجال بعد الـseed = restaurant (الفعلي ${st && st.vertical})`);
+  ok(st && st.vertical === "beauty", `ختم المجال بعد الـseed = beauty (الفعلي ${st && st.vertical})`);
   ok(!db.prepare("SELECT 1 FROM sqlite_master WHERE type='trigger' AND name='trg_settings_vertical_gaming_cafe'").get(), "trigger «بلايستيشن + كافيه» اتشال (ماينفعش trigger تاني يختم فوقه)");
 
   const now = new Date().toISOString();
@@ -114,7 +114,7 @@ try {
   ok(after.session.kind === "room" && after.session.merged_into_id === null, "الجلسة القديمة بقت kind=room");
   ok(after.booking.kind === "room" && after.booking.party_size === null, "الحجز القديم بقى kind=room");
   ok(after.order.session_id === null, "الفاتورة القديمة من غير session_id");
-  ok(db1.prepare("SELECT vertical FROM settings WHERE id=1").get().vertical === "restaurant", "الصف الموجود اتختم restaurant");
+  ok(db1.prepare("SELECT vertical FROM settings WHERE id=1").get().vertical === "beauty", "الصف الموجود اتختم beauty");
   db1.close();
 } finally {
   try {

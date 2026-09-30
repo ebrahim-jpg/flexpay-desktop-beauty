@@ -58,7 +58,11 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
     const room = await call("gaming:rooms:save", { name: "طاولة البار" });
     ok(room.ok && room.data.kind === "table", "المدير عمل طاولة");
 
-    // «بائع» حاضر — لو البيع لسه بيسجّل البائعين هيظهر في order_sellers
+    // الحلاق اللي الجلسة هتتفتح باسمه
+    const stylistId = Number(insertUser.run("u-h", "سماح", "samah", "stylist", "{}").lastInsertRowid);
+
+    // «بائع» حاضر من نسخة التجزئة — ⚠️ في التجميل الإسناد **صريح** مش بالحضور،
+    // فالبائع الحاضر ده **مالوش** يظهر في order_sellers. الفحص تحت بيثبت ده.
     const sellerId = Number(insertUser.run("u-s", "بائع قديم", "sel", "seller", "{}").lastInsertRowid);
     db.prepare(
       "INSERT INTO attendance_logs (local_id, user_id, user_name, type, business_date) VALUES ('a1', ?, 'بائع قديم', 'clock_in', '2026-01-01')"
@@ -67,7 +71,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
     // ===== ① موظف الصالة بيشتغل عادي =====
     console.log("\n— موظف الصالة بيشغّل الطاولات ويبيع —");
     setCurrentActor(staffId);
-    const opened = await call("gaming:session:open", { room_id: room.data.id });
+    const opened = await call("gaming:session:open", { room_id: room.data.id, staff_id: stylistId });
     ok(opened.ok, `موظف الصالة فتح جلسة (${opened.ok ? "" : opened.error})`);
     await call("gaming:session:addItem", { session_id: opened.data.id, product_id: productId, quantity: 1 });
     const checkout = await call("gaming:session:checkout", {
@@ -129,19 +133,37 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
 
     // ===== ④ البائعين · الأدوار · الوزن =====
     console.log("\n— الأدوار والمنتجات —");
-    const sellersCount = db.prepare("SELECT COUNT(*) c FROM order_sellers").get().c;
-    ok(sellersCount === 0, `البيع مابيسجّلش «بائعين حاضرين» (${sellersCount})`);
-    for (const role of ["delivery", "seller"]) {
+    // ⚠️ الفرق الجوهري عن التجزئة: الإسناد هنا **صريح من الجلسة** مش «كل البائعين
+    // الحاضرين». «بائع قديم» فوق حاضر وماعملش أي خدمة — لازم يطلع صفر، والحلاق
+    // الحقيقي ياخد الفلوس كلها. لو الإسناد رجع للحضور، الفحص ده بيوقع.
+    const sellers = db
+      .prepare("SELECT seller_id, seller_name, attributed_amount FROM order_sellers")
+      .all();
+    ok(
+      sellers.every((s) => s.seller_id !== sellerId),
+      `«البائع الحاضر» مش في الإسناد (${sellers.map((s) => s.seller_name).join(" · ") || "مفيش"})`
+    );
+    ok(
+      sellers.length > 0 && sellers.every((s) => s.seller_id === stylistId),
+      `الإسناد للحلاق اللي فتح الجلسة بس (${sellers.length} صف)`
+    );
+    // ⚠️ كود حضور **مختلف لكل واحد**، وإلا الرفض يحصل بسبب تكرار الكود
+    // فالفحص يبقى أخضر من غير ما الدور يكون مرفوض فعلاً.
+    const BANNED = ["delivery", "seller", "waiter", "chef"];
+    for (let bi = 0; bi < BANNED.length; bi++) {
+      const role = BANNED[bi];
       const r = await call("users:create", {
         name: `جديد ${role}`,
         username: `new-${role}`,
         role,
-        attendanceCode: role === "delivery" ? "11111" : "22222",
+        attendanceCode: `9000${bi}`,
       });
       ok(!r.ok, `إضافة مستخدم بدور ${role} مرفوضة من الـmain${r.ok ? " — **اتضاف**" : ""}`);
     }
     const hall = await call("users:create", { name: "موظف جديد", username: "hall2", role: "cashier", pin: "1234", attendanceCode: "33333" });
     ok(hall.ok, `إضافة موظف صالة شغّالة (${hall.ok ? "" : hall.error})`);
+    const newStylist = await call("users:create", { name: "حلاق جديد", username: "st2", role: "stylist", pin: "4321", attendanceCode: "44444" });
+    ok(newStylist.ok, `وإضافة حلاق شغّالة (${newStylist.ok ? "" : newStylist.error})`);
     const weighed = await call("products:create", {
       name: "لب",
       category_id: null,
@@ -174,8 +196,8 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
     ok(!handlers.has("gaming:session:extend") && !handlers.has("gaming:session:switchMode"), "مفيش قنوات مدة/وضع غرف متسجّلة أصلاً");
 
     setCurrentActor(staffId);
-    const tab1 = await call("gaming:session:open", { room_id: tables[0].id });
-    const tab2 = await call("gaming:session:open", { room_id: tables[1].id });
+    const tab1 = await call("gaming:session:open", { room_id: tables[0].id, staff_id: stylistId });
+    const tab2 = await call("gaming:session:open", { room_id: tables[1].id, staff_id: stylistId });
     ok(tab1.ok && tab2.ok, `موظف الصالة فتح حسابين طاولات (${tab1.ok ? "" : tab1.error})`);
     await call("gaming:session:addItem", { session_id: tab1.data.id, product_id: productId, quantity: 2 });
     await call("gaming:session:addItem", { session_id: tab2.data.id, product_id: productId, quantity: 1 });

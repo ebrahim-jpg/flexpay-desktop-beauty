@@ -32,7 +32,13 @@ const LIVE_URL = "https://app.flexpay.example";
 // فالاختبار يفضل «ناجح» وهو بيقيس ترقية مالهاش وجود. ونفس الملف بيشتغل في
 // التلات نسخ رغم اختلاف أرقام الـmigrations بينهم.
 const LATEST = Math.max(...migrations.map((m) => m.version));
-const PREV_VERSION = LATEST - 1;
+// ⚠️ نقطة البداية = **قبل** migration المزامنة بالاسم مش برقم ثابت ولا بـ`LATEST - 1`.
+// بالرقم الثابت الاختبار بيبقى قديم، وبـ`LATEST - 1` بقى بيبني قاعدة فيها
+// `sync_enabled` أصلاً — يعني بيقيس ترقية مالهاش وجود. بالاسم: الفرضية تفضل صح
+// مهما زادت الـmigrations، والمسار اللي بيتقاس هو **أطول ترقية حقيقية** عند العملاء.
+const SYNC_TOGGLE = migrations.find((m) => m.name === "sync_toggle");
+if (!SYNC_TOGGLE) throw new Error("migration «sync_toggle» مش موجودة — الاختبار ده مبني عليها");
+const PREV_VERSION = SYNC_TOGGLE.version - 1;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-act-upg-"));
 const dbPath = path.join(dir, "database.db");
