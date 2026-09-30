@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ChefHat, Minus, Package, Plus, Search, Trash2 } from "lucide-react";
+import { Minus, Package, Plus, Search, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ProductCard } from "@/components/pos/ProductCard";
 import { ModifierModal } from "@/components/pos/ModifierModal";
 import { SizePicker } from "@/components/pos/SizePicker";
+import { StaffPicker } from "@/components/beauty/StaffPicker";
 import { useIPC } from "@/hooks/useIPC";
 import { useSettingsStore } from "@/store/settings.store";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,6 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
   const [search, setSearch] = useState("");
   const [modifierProduct, setModifierProduct] = useState<ProductDTO | null>(null);
   const [sizeProduct, setSizeProduct] = useState<ProductDTO | null>(null);
-  const [sending, setSending] = useState(false);
   const [pickedSize, setPickedSize] = useState<SizeDTO | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -118,38 +118,39 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
     void add(product, [], "", size);
   }
 
-  // عدد الأصناف اللي لسه ماراحتش للمطبخ (بالفرق مش بالكمية الكاملة)
-  const pendingCount = (session?.items ?? []).filter((i) => i.quantity - i.sent_qty > 0.0001).length;
+  // البند اللي بنغيّر الحلاق بتاعه
+  const [staffForItem, setStaffForItem] = useState<SessionItemDTO | null>(null);
 
-  async function sendToKitchen() {
-    if (!session || pendingCount === 0) return;
-    try {
-      setSending(true);
-      const res = await invoke("gaming:session:sendToKitchen", session.id);
-      onChanged(res.session);
-      toast.success(`راحت دفعة ${res.batch} للمطبخ — ${res.printed} صنف`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر إرسال الطلبات للمطبخ");
-    } finally {
-      setSending(false);
-    }
+  async function changeQty(it: SessionItemDTO, quantity: number) {
+    await setQty(it.id, quantity);
   }
 
   /**
-   * تعديل كمية أو حذف بند.
-   * ⚠️ البند اللي **راح للمطبخ خلاص** بيسأل تأكيد الأول: المطبخ بدأ يجهّزه، والنادل
-   * هو اللي بيبلّغهم بنفسه (قرار المالك — مفيش ورقة إلغاء في مطعم بطابعة واحدة).
+   * تغيير اللي عمل الخدمة دي.
+   * ⚠️ بيشيل البند ويضيفه تاني بالحلاق الجديد — لأن الحلاق **جزء من مفتاح تجميع
+   * البنود** (نفس الخدمة بحلاقين = بندين)، فتعديله في مكانه كان هيكسر المفتاح.
    */
-  async function changeQty(it: SessionItemDTO, quantity: number) {
-    const sentAffected = it.sent_qty > 0 && quantity < it.sent_qty;
-    if (sentAffected) {
-      const what = quantity <= 0 ? "تشيل" : "تقلّل";
-      const okToGo = window.confirm(
-        `${productWithSize(it.product_name, it.variant_size)} راح للمطبخ خلاص — متأكد إنك عايز ${what}ه؟ بلّغ المطبخ بنفسك.`
-      );
-      if (!okToGo) return;
+  async function changeStaff(it: SessionItemDTO, staffId: number) {
+    if (!session) return;
+    try {
+      setBusy(true);
+      await invoke("gaming:session:removeItem", it.id);
+      const updated = await invoke("gaming:session:addItem", {
+        session_id: session.id,
+        product_id: it.product_id,
+        quantity: it.quantity,
+        modifier_option_ids: it.modifier_option_ids,
+        notes: it.notes,
+        variant_id: it.variant_id,
+        staff_id: staffId,
+      });
+      onChanged(updated);
+      toast.success("اتغيّر اللي عمل الخدمة");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "تعذّر تغيير الحلاق");
+    } finally {
+      setBusy(false);
     }
-    await setQty(it.id, quantity);
   }
 
   async function setQty(itemId: number, quantity: number) {
@@ -187,20 +188,8 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
                 </p>
               ) : (
                 session.items.map((it) => {
-                  // حالة البند مع المطبخ: راح كله · راح جزء منه · لسه معلّق
-                  const pending = it.quantity - it.sent_qty;
-                  const allSent = pending <= 0.0001;
-                  const partial = it.sent_qty > 0 && !allSent;
                   return (
-                    <div
-                      key={it.id}
-                      className={cn(
-                        "rounded-md p-2 text-sm",
-                        allSent
-                          ? "bg-surface-secondary"
-                          : "bg-accent/10 ring-1 ring-accent/40"
-                      )}
-                    >
+                    <div key={it.id} className={cn("rounded-md bg-surface-secondary p-2 text-sm")}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="line-clamp-1 font-medium text-text-primary">
                           {productWithSize(it.product_name, it.variant_size)}
@@ -209,34 +198,30 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
                           type="button"
                           className="text-text-secondary hover:text-danger"
                           onClick={() => void changeQty(it, 0)}
-                          disabled={busy || sending}
+                          disabled={busy}
                           aria-label="شيل البند"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
 
-                      {/* حالة المطبخ — النادل لازم يعرف إيه اللي راح وإيه لسه */}
-                      <div className="mt-0.5 text-[11px]">
-                        {allSent ? (
-                          <span className="inline-flex items-center gap-1 text-success">
-                            <Check className="h-3 w-3" />
-                            راح للمطبخ
-                          </span>
-                        ) : partial ? (
-                          <span className="text-accent-foreground">
-                            جديد {pending} · راح {it.sent_qty}
-                          </span>
-                        ) : (
-                          <span className="text-accent-foreground">لسه ماراحش للمطبخ</span>
-                        )}
-                      </div>
+                      {/* ⚠️ **اللي عمل الخدمة** — عليه بتتحسب عمولته، فلازم يبان
+                          على كل بند ويتغيّر بضغطة (سماح الصبغة ومنى الاستشوار). */}
+                      <button
+                        type="button"
+                        onClick={() => setStaffForItem(it)}
+                        disabled={busy}
+                        className="mt-0.5 flex items-center gap-1 text-[11px] text-text-secondary hover:text-primary"
+                      >
+                        <UserRound className="h-3 w-3" />
+                        {it.staff_name ?? "مش محدّد"}
+                      </button>
 
                       <div className="mt-1 flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={busy || sending}
+                          disabled={busy}
                           onClick={() => void changeQty(it, it.quantity - 1)}
                         >
                           <Minus />
@@ -245,7 +230,7 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={busy || sending}
+                          disabled={busy}
                           onClick={() => void changeQty(it, it.quantity + 1)}
                         >
                           <Plus />
@@ -261,27 +246,6 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
               <span className="font-bold text-primary tabular-nums">{formatCurrency(session?.items_subtotal ?? 0)}</span>
             </div>
 
-            {/* ⚠️ **دي الحاجة اللي كانت ناقصة.** التذكرة بتطلع من هنا **ورقة واحدة
-                بالجديد بس** — مش ورقة مع كل صنف، ومش الأوردر كله من أوله كل مرة. */}
-            <div className="border-t border-border p-3">
-              <Button
-                className="w-full"
-                disabled={pendingCount === 0 || busy || sending}
-                onClick={() => void sendToKitchen()}
-              >
-                <ChefHat className="h-4 w-4" />
-                {sending
-                  ? "بيطبع..."
-                  : pendingCount === 0
-                    ? "كل الطلبات راحت للمطبخ"
-                    : `أرسل للمطبخ (${pendingCount})`}
-              </Button>
-              {session && session.kitchen_batches > 0 && (
-                <p className="mt-1.5 text-center text-[11px] text-text-secondary">
-                  راح للمطبخ {session.kitchen_batches} دفعة
-                </p>
-              )}
-            </div>
           </div>
 
           {/* المنتجات */}
@@ -326,6 +290,19 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
             </div>
           </div>
         </div>
+
+        {/* تغيير اللي عمل خدمة معيّنة */}
+        <StaffPicker
+          open={!!staffForItem}
+          title={staffForItem ? `مين عمل ${staffForItem.product_name}؟` : ""}
+          currentId={staffForItem?.staff_id ?? null}
+          onOpenChange={(o) => !o && setStaffForItem(null)}
+          onPick={(staff) => {
+            const it = staffForItem;
+            setStaffForItem(null);
+            if (it) void changeStaff(it, staff.id);
+          }}
+        />
 
         <SizePicker
           product={sizeProduct}

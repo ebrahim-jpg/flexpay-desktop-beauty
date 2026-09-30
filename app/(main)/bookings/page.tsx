@@ -21,6 +21,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
+import { StaffPicker } from "@/components/beauty/StaffPicker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +77,8 @@ export default function BookingsPage() {
   const [busy, setBusy] = useState<number | null>(null);
 
   const [confirmFor, setConfirmFor] = useState<BookingDTO | null>(null);
+  // الحجز اللي بنحوّله لجلسة — بيسأل الحلاق الأول (العمولة بتتحدد بيه)
+  const [convertFor, setConvertFor] = useState<BookingDTO | null>(null);
   const [confirmNote, setConfirmNote] = useState("");
   // «بلايستيشن + كافيه»: حجز الطاولة بيوصل من غير طاولة — الموظف بيختارها وقت التأكيد
   const [tables, setTables] = useState<GamingRoomDTO[]>([]);
@@ -295,12 +298,10 @@ export default function BookingsPage() {
                         size="sm"
                         variant="accent"
                         disabled={busy === b.id}
-                        onClick={() =>
-                          void act(b.id, () => invoke("bookings:convert", b.id), "الحساب اتفتح")
-                        }
+                        onClick={() => setConvertFor(b)}
                       >
                         <Play className="h-4 w-4" />
-                        افتح الحساب
+                        افتح الجلسة
                       </Button>
                     )}
                     {b.status === "confirmed" && (
@@ -468,6 +469,20 @@ export default function BookingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* تحويل حجز لجلسة — الحلاق إجباري زي أي جلسة تانية */}
+      <StaffPicker
+        open={!!convertFor}
+        title={`افتح جلسة — ${convertFor?.room_name ?? ""}`}
+        description={`الحجز لـ${convertFor?.customer_name ?? "زبون"} — مين هيشتغل؟`}
+        onOpenChange={(o) => !o && setConvertFor(null)}
+        onPick={(staff) => {
+          const b = convertFor;
+          setConvertFor(null);
+          if (b) {
+            void act(b.id, () => invoke("bookings:convert", { id: b.id, staff_id: staff.id }), "الجلسة اتفتحت");
+          }
+        }}
+      />
     </div>
   );
 }

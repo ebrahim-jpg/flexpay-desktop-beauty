@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AddDrinksDialog } from "@/components/gaming/AddDrinksDialog";
+import { StaffPicker } from "@/components/beauty/StaffPicker";
 import { SessionCheckoutModal } from "@/components/gaming/SessionCheckoutModal";
 import { SplitBillDialog } from "@/components/gaming/SplitBillDialog";
 import { TablesManager } from "@/components/gaming/TablesManager";
@@ -70,6 +71,8 @@ export default function TablesPage() {
   const [now, setNow] = useState(() => Date.now());
   const [area, setArea] = useState<string>(ALL);
   const [busyTable, setBusyTable] = useState<number | null>(null);
+  // الكرسي اللي بنفتح عليه جلسة — المنتقي بيسأل مين هيشتغل قبل الفتح
+  const [openingTable, setOpeningTable] = useState<GamingRoomDTO | null>(null);
 
   const [ordersFor, setOrdersFor] = useState<GamingSessionDTO | null>(null);
   const [checkoutFor, setCheckoutFor] = useState<GamingSessionDTO | null>(null);
@@ -146,15 +149,19 @@ export default function TablesPage() {
     setSplitFor((d) => (d && d.id === updated.id ? updated : d));
   }
 
-  async function openTable(table: GamingRoomDTO) {
+  /**
+   * فتح جلسة على كرسي — **بيسأل الحلاق الأول**.
+   * ⚠️ الحلاق مش اختياري: عليه بتتحسب عمولته، والـMain بيرفض الجلسة بلاه.
+   */
+  async function openTable(table: GamingRoomDTO, staffId: number) {
     try {
       setBusyTable(table.id);
-      const s = await invoke("gaming:session:open", { room_id: table.id });
-      toast.success(`اتفتح حساب ${table.name}`);
+      const s = await invoke("gaming:session:open", { room_id: table.id, staff_id: staffId });
+      toast.success(`اتفتحت جلسة ${table.name}`);
       await load();
       setOrdersFor(s);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر فتح الحساب");
+      toast.error(e instanceof Error ? e.message : "تعذّر فتح الجلسة");
     } finally {
       setBusyTable(null);
     }
@@ -295,7 +302,7 @@ export default function TablesPage() {
                       onMute={() => setMuted((m) => new Set(m).add(bookingMuteKey(nextBooking.booking)))}
                     />
                   )}
-                  <Button className="mt-4" disabled={busy} onClick={() => void openTable(table)}>
+                  <Button className="mt-4" disabled={busy} onClick={() => setOpeningTable(table)}>
                     <Play />
                     افتح حساب
                   </Button>
@@ -430,6 +437,18 @@ export default function TablesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* منتقي الحلاق — قبل فتح أي جلسة. عليه بتتحسب العمولة فمفيش «تخطّي». */}
+      <StaffPicker
+        open={!!openingTable}
+        title={`جلسة جديدة — ${openingTable?.name ?? ""}`}
+        onOpenChange={(o) => !o && setOpeningTable(null)}
+        onPick={(staff) => {
+          const t = openingTable;
+          setOpeningTable(null);
+          if (t) void openTable(t, staff.id);
+        }}
+      />
 
       <AddDrinksDialog session={ordersFor} open={!!ordersFor} onOpenChange={(o) => !o && setOrdersFor(null)} onChanged={replaceSession} />
 
