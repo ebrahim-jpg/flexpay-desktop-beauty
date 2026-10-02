@@ -10,7 +10,6 @@ import type {
   CheckoutSessionInput,
   OpenSessionInput,
   SaveRoomInput,
-  SplitCheckoutInput,
 } from "../../shared/gaming";
 
 function handle<T>(fn: () => T): IpcResult<T> {
@@ -210,7 +209,7 @@ export function registerGamingIpc(): void {
     })
   );
 
-  // ===== نقل · دمج · تقسيم — شغل موظف الصالة العادي (مفيش فلوس بتتلغي) =====
+  // ===== نقل الجلسة — شغل الريسبشن العادي (مفيش فلوس بتتلغي) =====
   ipcMain.handle("gaming:session:transfer", (_e, input: { session_id: number; to_room_id: number }) =>
     handle(() => {
       const user = requirePos();
@@ -226,57 +225,6 @@ export function registerGamingIpc(): void {
         newValue: { room_name: session.room_name },
       });
       return session;
-    })
-  );
-
-  ipcMain.handle("gaming:session:merge", (_e, input: { from_session_id: number; into_session_id: number }) =>
-    handle(() => {
-      const user = requirePos();
-      const from = gamingRepository.getSession(input.from_session_id);
-      const session = gamingRepository.mergeSessions(input.from_session_id, input.into_session_id, {
-        id: user.id,
-        name: user.name,
-      });
-      auditRepository.log({
-        userId: user.id,
-        userName: user.name,
-        action: `دمج طاولة ${from?.room_name ?? "—"} في ${session.room_name}`,
-        entityType: "gaming_session",
-        entityId: session.id,
-        oldValue: { room_name: from?.room_name ?? null, session: from?.session_label ?? null },
-        newValue: { room_name: session.room_name, session: session.session_label },
-      });
-      return session;
-    })
-  );
-
-  ipcMain.handle(
-    "gaming:session:quoteSplit",
-    (
-      _e,
-      input: {
-        session_id: number;
-        lines: SplitCheckoutInput["lines"];
-        discount_type?: "none" | "percentage" | "fixed";
-        discount_value?: number;
-      }
-    ) =>
-      handle(
-        () => (
-          requirePos(),
-          gamingRepository.quoteSplit(input.session_id, input.lines, input.discount_type ?? "none", input.discount_value ?? 0)
-        )
-      )
-  );
-
-  ipcMain.handle("gaming:session:splitCheckout", (_e, input: SplitCheckoutInput) =>
-    handle(() => {
-      const user = requirePos();
-      const hasDiscount = input.discount_type !== "none" && input.discount_value > 0;
-      if (hasDiscount && !can(user, "canGiveDiscount")) throw new Error("مالكش صلاحية إعطاء خصم");
-      const result = gamingRepository.splitCheckout(input, { id: user.id, name: user.name });
-      logOrder(user, result, true);
-      return result;
     })
   );
 }

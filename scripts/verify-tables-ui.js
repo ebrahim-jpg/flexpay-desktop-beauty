@@ -36,17 +36,25 @@ console.log("\n— صفحة الطاولات —");
 const page = code("app/(main)/tables/page.tsx");
 ok(exists("app/(main)/tables/page.tsx"), "app/(main)/tables/page.tsx موجودة");
 ok(/invoke\("gaming:board"\)/.test(page) && /board\?\.tables/.test(page), "اللوحة بترجع الطاولات (مفيش غرف في النسخة دي)");
-for (const ch of ["gaming:session:transfer", "gaming:session:merge", "gaming:session:open"]) {
+for (const ch of ["gaming:session:transfer", "gaming:session:open"]) {
   ok(page.includes(`"${ch}"`), `الصفحة بتستخدم ${ch}`);
 }
-ok(/SplitBillDialog/.test(page) && exists("components/gaming/SplitBillDialog.tsx"), "تقسيم الفاتورة موصّل (SplitBillDialog)");
+// ⚠️ الدمج والتقسيم اتشالوا: الدمج كان بيمسح نصيب حلاق (مفتاح تجميع البنود
+// عنده ماكانش فيه `staff_id` بخلاف `addItem`) — والتقسيم اتشال بقرار المالك.
+for (const gone of ["gaming:session:merge", "gaming:session:splitCheckout", "gaming:session:quoteSplit"]) {
+  ok(!page.includes(`"${gone}"`), `ومابتستخدمش ${gone}`);
+}
+ok(!exists("components/gaming/SplitBillDialog.tsx"), "وديالوج التقسيم اتمسح");
+ok(
+  !/mergeSessions|splitCheckout|quoteSplit/.test(code("electron/repositories/gaming.repository.ts")),
+  "والريبو مافيهوش دوالهم خالص"
+);
 ok(/SessionCheckoutModal/.test(page) && /AddDrinksDialog/.test(page), "الحساب والطلبات موصّلين");
 ok(/TablesManager/.test(page) && exists("components/gaming/TablesManager.tsx"), "إدارة الطاولات موصّلة");
 ok(/"gaming:rooms:save"/.test(code("components/gaming/TablesManager.tsx")) && !/rate_single|rate_multi/.test(code("components/gaming/TablesManager.tsx")), "إدارة الطاولات بالاسم والمنطقة بس (مفيش أسعار)");
 ok(!/time_revenue|إيراد|items_subtotal\s*\)\s*\}\s*<\/p>\s*<p[^>]*>الوقت/.test(page), "مفيش إيراد ولا «وقت محسوب» على شاشة الطاولات");
 ok(/canCancelOrder/.test(page), "زرار إلغاء الحساب ورا صلاحية canCancelOrder");
 ok(/QuickSaleDialog/.test(page), "البيع السريع متاح من شاشة الطاولات كمان");
-ok(/SPLIT_QUOTE|gaming:session:quoteSplit/.test(code("components/gaming/SplitBillDialog.tsx")), "التقسيم بيعرض الإجمالي من السيرفر (quoteSplit) مش حساب موازي");
 
 // ===== ③ مفيش شاشة غرف =====
 console.log("\n— مفيش شاشة غرف —");

@@ -3,7 +3,7 @@
 //
 //   • كل مكان طاولة (kind=table) سعرها صفر، ومافيش أي غرف ولا تسعير وقت.
 //   • الحساب = فاتورة source='table_session' **من غير بند وقت** + session_id على الفاتورة.
-//   • نقل الحساب لطاولة فاضية · دمج طاولتين (البنود بتتجمع والتانية merged) · تقسيم الفاتورة
+//   • نقل الحساب لكرسي فاضية · و**مفيش دمج ولا تقسيم** (الدمج كان بيمسح نصيب حلاق)
 //     (فاتورة لكل جزء، مجموعهم = الكل، والمخزون بيتخصم مرة واحدة بس).
 //   • مفيش غرف: فتح حساب على صف غرفة قديم مرفوض برسالة واضحة.
 //
@@ -116,53 +116,19 @@ try {
   ok(!db.prepare("SELECT 1 FROM gaming_sessions WHERE room_id = ? AND status='open'").get(t1.id), "طاولة 1 بقت فاضية");
   ok(JSON.parse(queue("gaming_session").pop().payload).room_id === t3.id, "المزامنة: النقل اتبعت UPDATED");
 
-  // ===== ④ الدمج =====
-  console.log("\n— دمج طاولتين —");
-  let b = gamingRepository.addItem({ session_id: open2, product_id: coffee, quantity: 2 }, actor);
-  b = gamingRepository.addItem({ session_id: open2, product_id: cake, quantity: 1 }, actor);
-  rejects(() => gamingRepository.mergeSessions(a.id, a.id), "دمج الحساب في نفسه مرفوض");
-  const merged = gamingRepository.mergeSessions(b.id, a.id);
-  const coffeeLine = merged.items.find((i) => i.product_id === coffee);
-  ok(coffeeLine && coffeeLine.quantity === 3, `القهوة اتجمعت في بند واحد (3) — الفعلي ${coffeeLine && coffeeLine.quantity}`);
-  ok(merged.items.length === 2, "الحساب فيه قهوة وكيكة");
-  const bRow = db.prepare("SELECT status, merged_into_id, ended_at FROM gaming_sessions WHERE id = ?").get(b.id);
-  ok(bRow.status === "merged" && bRow.merged_into_id === a.id && !!bRow.ended_at, "الحساب التاني بقى merged ومربوط بالأول");
-  ok(db.prepare("SELECT COUNT(*) c FROM gaming_session_items WHERE session_id = ?").get(b.id).c === 0, "مفيش بنود فاضلة على الحساب اللي اتدمج");
-  ok(!db.prepare("SELECT 1 FROM gaming_sessions WHERE room_id = ? AND status='open'").get(t2.id), "طاولة 2 بقت فاضية");
-  rejects(() => gamingRepository.mergeSessions(b.id, a.id), "دمج حساب اتدمج قبل كده مرفوض");
-  const mergedPayload = queue("gaming_session").map((x) => JSON.parse(x.payload)).filter((p) => p.local_id === b.local_id).pop();
-  ok(mergedPayload.status === "merged" && mergedPayload.merged_into_id === a.id, "المزامنة: الدمج بيبعت merged_into_id");
-
-  // ===== ⑤ تقسيم الفاتورة =====
-  console.log("\n— تقسيم الفاتورة —");
-  const ordersBefore = db.prepare("SELECT COUNT(*) c FROM orders").get().c;
-  const stockBefore = stock();
-  const coffeeItem = merged.items.find((i) => i.product_id === coffee);
-  const cakeItem = merged.items.find((i) => i.product_id === cake);
-  rejects(
-    () => gamingRepository.splitCheckout({ session_id: a.id, ...cash(), lines: [{ item_id: coffeeItem.id, quantity: 4 }] }, actor),
-    "تقسيم بكمية أكبر من اللي على الحساب مرفوض"
-  );
-  rejects(() => gamingRepository.splitCheckout({ session_id: a.id, ...cash(), lines: [] }, actor), "تقسيم من غير بنود مرفوض");
-  // عرض الجزء من السيرفر بنفس تسعير الفاتورة (الواجهة مابتحسبش لوحدها)
-  const sq = gamingRepository.quoteSplit(a.id, [{ item_id: coffeeItem.id, quantity: 2 }], "fixed", 5);
-  ok(near(sq.subtotal, 40) && near(sq.discount_amount, 5) && near(sq.total, 35), `عرض الجزء: 40 − خصم 5 = 35 (الفعلي ${sq.total})`);
-  rejects(() => gamingRepository.quoteSplit(a.id, [{ item_id: coffeeItem.id, quantity: 9 }]), "عرض جزء بكمية أكبر من الحساب مرفوض");
-  const part1 = gamingRepository.splitCheckout({ session_id: a.id, ...cash(), lines: [{ item_id: coffeeItem.id, quantity: 2 }] }, actor);
-  ok(part1.order.source === "table_session" && near(part1.order.total, 40), `الجزء الأول: 2 قهوة = 40 (الفعلي ${part1.order.total})`);
-  ok(part1.session.status === "open", "الحساب لسه مفتوح بالباقي");
-  const left = part1.session.items;
-  ok(left.find((i) => i.product_id === coffee)?.quantity === 1 && left.find((i) => i.product_id === cake)?.quantity === 1, "الباقي: قهوة 1 + كيكة 1");
-  const part2 = gamingRepository.splitCheckout(
-    { session_id: a.id, ...cash(), lines: left.map((i) => ({ item_id: i.id, quantity: i.quantity })) },
-    actor
-  );
-  ok(near(part2.order.total, 55), `الجزء التاني: قهوة + كيكة = 55 (الفعلي ${part2.order.total})`);
-  ok(part2.session.status === "closed" && part2.session.order_id === part2.order.id, "آخر جزء قفل الحساب");
-  ok(db.prepare("SELECT COUNT(*) c FROM orders").get().c - ordersBefore === 2, "فاتورتين بالظبط");
-  const sumSplit = db.prepare("SELECT SUM(total) s, COUNT(DISTINCT session_id) n FROM orders WHERE session_id = ?").get(a.id);
-  ok(near(sumSplit.s, 95) && sumSplit.n === 1, "الفاتورتين مربوطين بنفس الحساب ومجموعهم = الكل (95)");
-  ok(stockBefore - stock() === 30, "المخزون اتخصم مرة واحدة (3 قهوة × 10) — مش مرتين");
+  // ===== ④ مفيش دمج ولا تقسيم =====
+  console.log("\n— مفيش دمج ولا تقسيم —");
+  // ⚠️ الاتنين اتشالوا من نسخة التجميل. الدمج كان **بيمسح نصيب حلاق**:
+  // مفتاح تجميع البنود عنده ماكانش فيه `staff_id` (بخلاف `addItem`)، فنفس الخدمة
+  // بحلاقين بتبقى صف واحد باسم واحد والتاني صفه **بيتمسح** → عمولته صفر.
+  // والتقسيم اتشال بقرار المالك. النقل بس هو اللي فاضل — وهو آمن (بيغيّر الكرسي بس).
+  for (const gone of ["mergeSessions", "splitCheckout", "quoteSplit", "pickSplit"]) {
+    ok(
+      typeof gamingRepository[gone] !== "function",
+      `الريبو مافيهوش ${gone}${typeof gamingRepository[gone] === "function" ? " — رجعت!" : ""}`
+    );
+  }
+  ok(typeof gamingRepository.transferSession === "function", "والنقل لسه موجود");
 
   // ===== ⑥ مفيش غرف =====
   console.log("\n— مفيش غرف —");

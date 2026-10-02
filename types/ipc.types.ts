@@ -50,7 +50,6 @@ import type {
   CheckoutSessionInput,
   GamingBoard,
   StylistPerformanceRow,
-  SplitCheckoutInput,
   GamingRoomDTO,
   GamingSessionDTO,
   GamingTodaySummary,
@@ -449,22 +448,8 @@ export interface IpcChannels {
     output: CreateOrderResult & { session: GamingSessionDTO };
   };
   "gaming:session:cancel": { input: { session_id: number; reason: string }; output: GamingSessionDTO };
-  // ===== الطاولات: نقل · دمج · تقسيم الفاتورة =====
+  // ===== نقل الحساب لكرسي تانية (مفيش دمج ولا تقسيم في التجميل) =====
   "gaming:session:transfer": { input: { session_id: number; to_room_id: number }; output: GamingSessionDTO };
-  "gaming:session:merge": { input: { from_session_id: number; into_session_id: number }; output: GamingSessionDTO };
-  "gaming:session:quoteSplit": {
-    input: {
-      session_id: number;
-      lines: SplitCheckoutInput["lines"];
-      discount_type?: "none" | "percentage" | "fixed";
-      discount_value?: number;
-    };
-    output: Omit<SessionQuote, "at" | "actual_minutes">;
-  };
-  "gaming:session:splitCheckout": {
-    input: SplitCheckoutInput;
-    output: CreateOrderResult & { session: GamingSessionDTO };
-  };
 
   // ===== طلبات حجز الغرف (الحجز الأونلاين) =====
   "bookings:list": { input: void; output: BookingDTO[] };

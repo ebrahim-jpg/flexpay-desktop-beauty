@@ -6,12 +6,10 @@ import {
   ArrowLeftRight,
   CalendarClock,
   Coffee,
-  Combine,
   Play,
   Receipt,
   Settings2,
   ShoppingBag,
-  SplitSquareHorizontal,
   UserRound,
   UtensilsCrossed,
   Zap,
@@ -28,7 +26,6 @@ import { AddDrinksDialog } from "@/components/gaming/AddDrinksDialog";
 import { StaffPicker } from "@/components/beauty/StaffPicker";
 import { QuickSessionDialog } from "@/components/beauty/QuickSessionDialog";
 import { SessionCheckoutModal } from "@/components/gaming/SessionCheckoutModal";
-import { SplitBillDialog } from "@/components/gaming/SplitBillDialog";
 import { TablesManager } from "@/components/gaming/TablesManager";
 import { QuickSaleDialog } from "@/components/gaming/QuickSaleDialog";
 import { useSessionAlarm } from "@/components/gaming/useSessionAlarm";
@@ -59,7 +56,8 @@ const bookingMuteKey = (b: BookingDTO) => `bk:${b.local_id}:${b.starts_at}`;
 
 // ===== الكراسي («بلايستيشن + كافيه») =====
 // شاشة البيع التانية جنب الغرف: حساب مفتوح على الكرسي بالطلبات بس (مالهاش سعر وقت)،
-// نقل لكرسي تانية · دمج طاولتين · تقسيم الفاتورة · حساب. الفلوس مش ظاهرة هنا (قدّام الزباين).
+// نقل لكرسي تانية · حساب · إلغاء. الفلوس مش ظاهرة هنا (قدّام الزباين).
+// ⚠️ مفيش دمج ولا تقسيم: الدمج كان بيمسح نصيب حلاق.
 export default function TablesPage() {
   const { invoke } = useIPC();
   const formatCurrency = useSettingsStore((s) => s.formatCurrency);
@@ -79,9 +77,7 @@ export default function TablesPage() {
 
   const [ordersFor, setOrdersFor] = useState<GamingSessionDTO | null>(null);
   const [checkoutFor, setCheckoutFor] = useState<GamingSessionDTO | null>(null);
-  const [splitFor, setSplitFor] = useState<GamingSessionDTO | null>(null);
   const [transferFor, setTransferFor] = useState<GamingSessionDTO | null>(null);
-  const [mergeFor, setMergeFor] = useState<GamingSessionDTO | null>(null);
   const [cancelFor, setCancelFor] = useState<GamingSessionDTO | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [customerFor, setCustomerFor] = useState<GamingSessionDTO | null>(null);
@@ -149,7 +145,6 @@ export default function TablesPage() {
   function replaceSession(updated: GamingSessionDTO) {
     setBoard((b) => (b ? { ...b, sessions: b.sessions.map((s) => (s.id === updated.id ? updated : s)) } : b));
     setOrdersFor((d) => (d && d.id === updated.id ? updated : d));
-    setSplitFor((d) => (d && d.id === updated.id ? updated : d));
   }
 
   /**
@@ -178,17 +173,6 @@ export default function TablesPage() {
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "تعذّر نقل الحساب");
-    }
-  }
-
-  async function merge(from: GamingSessionDTO, into: GamingSessionDTO) {
-    try {
-      await invoke("gaming:session:merge", { from_session_id: from.id, into_session_id: into.id });
-      toast.success(`${from.room_name} اتدمجت في ${into.room_name}`);
-      setMergeFor(null);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر الدمج");
     }
   }
 
@@ -222,7 +206,7 @@ export default function TablesPage() {
     <div className="space-y-6">
       <PageHeader
         title="الكراسي"
-        description="افتح جلسة على كرسي واختار الحلاق، ضيف الخدمات، وقسّم أو ادمج الفاتورة — وكل خدمة بتتسجّل باسم اللي عملها"
+        description="افتح جلسة على كرسي واختار الحلاق، ضيف الخدمات، واحسب — وكل خدمة بتتسجّل باسم اللي عملها"
         action={
           <div className="flex gap-2">
             {hasPermission("canManageProducts") && (
@@ -328,7 +312,6 @@ export default function TablesPage() {
 
             const count = session.items.reduce((n, it) => n + it.quantity, 0);
             const elapsed = now - Date.parse(session.started_at);
-            const otherOccupied = sessions.filter((s) => s.id !== session.id);
             return (
               <div key={table.id} className="flex flex-col rounded-xl border-2 border-primary/40 bg-primary/5 p-4 shadow-sm">
                 <div className="flex items-start justify-between">
@@ -374,14 +357,6 @@ export default function TablesPage() {
                     <ArrowLeftRight />
                     نقل
                   </Button>
-                  <Button variant="outline" disabled={otherOccupied.length === 0} onClick={() => setMergeFor(session)}>
-                    <Combine />
-                    دمج
-                  </Button>
-                  <Button variant="outline" disabled={count === 0} onClick={() => setSplitFor(session)}>
-                    <SplitSquareHorizontal />
-                    قسّم
-                  </Button>
                   <Button variant="accent" disabled={count === 0} onClick={() => setCheckoutFor(session)}>
                     <Receipt />
                     حساب
@@ -406,7 +381,7 @@ export default function TablesPage() {
         </div>
       )}
 
-      {/* نقل: لكرسي فاضية بس — لو هيقعدوا مع ناس، الدمج */}
+      {/* نقل: لكرسي فاضية بس — العميل قام من كرسي لكرسي */}
       <Dialog open={!!transferFor} onOpenChange={(o) => !o && setTransferFor(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -419,28 +394,6 @@ export default function TablesPage() {
                 {t.area && <span className="text-xs text-text-secondary">{t.area}</span>}
               </Button>
             ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* دمج: الحساب ده بيتنقل بطلباته على حساب كرسي تانية */}
-      <Dialog open={!!mergeFor} onOpenChange={(o) => !o && setMergeFor(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>دمج {mergeFor?.room_name} مع كرسي تانية</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-text-secondary">
-            طلبات {mergeFor?.room_name} هتتنقل على حساب الكرسي اللي هتختارها، و{mergeFor?.room_name} هتبقى فاضية.
-          </p>
-          <div className="grid max-h-[50vh] grid-cols-3 gap-2 overflow-y-auto">
-            {sessions
-              .filter((s) => s.id !== mergeFor?.id)
-              .map((s) => (
-                <Button key={s.id} variant="outline" className="h-14 flex-col" onClick={() => mergeFor && void merge(mergeFor, s)}>
-                  <span className="font-bold">{s.room_name}</span>
-                  <span className="text-xs text-text-secondary">{s.items.reduce((n, it) => n + it.quantity, 0)} طلب</span>
-                </Button>
-              ))}
           </div>
         </DialogContent>
       </Dialog>
@@ -474,16 +427,6 @@ export default function TablesPage() {
         onOpenChange={(o) => !o && setCheckoutFor(null)}
         onComplete={(order) => {
           setReceipt(order);
-          void load();
-        }}
-      />
-
-      <SplitBillDialog
-        session={splitFor}
-        open={!!splitFor}
-        onOpenChange={(o) => !o && setSplitFor(null)}
-        onPaid={(_order, updated) => {
-          if (updated.status === "open") replaceSession(updated);
           void load();
         }}
       />

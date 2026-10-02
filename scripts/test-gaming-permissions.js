@@ -203,33 +203,18 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
     await call("gaming:session:addItem", { session_id: tab2.data.id, product_id: productId, quantity: 1 });
     const moved = await call("gaming:session:transfer", { session_id: tab1.data.id, to_room_id: tables[2].id });
     ok(moved.ok && moved.data.room_id === tables[2].id, `موظف الصالة نقل الحساب (${moved.ok ? "" : moved.error})`);
-    const mergedR = await call("gaming:session:merge", { from_session_id: tab2.data.id, into_session_id: tab1.data.id });
-    ok(mergedR.ok && mergedR.data.items[0].quantity === 3, `موظف الصالة دمج طاولتين (${mergedR.ok ? "" : mergedR.error})`);
+    // ⚠️ الدمج والتقسيم **اتشالوا من نسخة التجميل**. الدمج كان بيمسح نصيب
+    // حلاق (بندين متشابهين بحلاقين بيبقوا صف واحد باسم واحد). الفحص بقى على
+    // إن القنوات **مش متسجّلة أصلاً** — مفيش باب خلفي من الـrenderer.
+    for (const dead of ["gaming:session:merge", "gaming:session:splitCheckout", "gaming:session:quoteSplit"]) {
+      ok(!handlers.has(dead), `قناة ${dead} **مش متسجّلة**${handlers.has(dead) ? " — رجعت!" : ""}`);
+    }
     const cancelTab = await call("gaming:session:cancel", { session_id: tab1.data.id, reason: "تجربة" });
     ok(!cancelTab.ok, "موظف الصالة **مايقدرش** يلغي حساب طاولة (نفس صلاحية إلغاء الطلب)");
-    const discounted = await call("gaming:session:splitCheckout", {
-      session_id: tab1.data.id,
-      payment_method: "cash",
-      amount_paid: 100,
-      discount_type: "fixed",
-      discount_value: 5,
-      lines: [{ item_id: mergedR.data.items[0].id, quantity: 1 }],
-    });
-    ok(!discounted.ok, "تقسيم بخصم مرفوض لموظف من غير صلاحية خصم");
-    const part = await call("gaming:session:splitCheckout", {
-      session_id: tab1.data.id,
-      payment_method: "cash",
-      amount_paid: 100,
-      discount_type: "none",
-      discount_value: 0,
-      lines: [{ item_id: mergedR.data.items[0].id, quantity: 1 }],
-    });
-    ok(part.ok && part.data.order.source === "table_session" && part.data.session.status === "open", `موظف الصالة دفع جزء من الحساب (${part.ok ? "" : part.error})`);
     const tSummary = await call("gaming:summary:today");
-    ok(tSummary.ok && tSummary.data.open_count === 1 && !("time_revenue" in tSummary.data), "ملخص الطاولات عدد بس (مفيش فلوس)");
+    ok(tSummary.ok && tSummary.data.open_count === 2 && !("time_revenue" in tSummary.data), `ملخص الكراسي عدد بس ومفيش فلوس (المفتوح ${tSummary.ok ? tSummary.data.open_count : "?"})`);
     const audits = db.prepare("SELECT action, entity_type FROM audit_log ORDER BY id").all().map((a) => a.action);
     ok(audits.some((a) => a.includes("نقل") && a.includes("طاولة")), "النقل متسجّل في سجل التدقيق");
-    ok(audits.some((a) => a.includes("دمج طاولة")), "الدمج متسجّل في سجل التدقيق");
     ok(audits.some((a) => a.startsWith("إضافة طاولة")), "إضافة الطاولة متسجّلة بلفظ «طاولة»");
     setCurrentActor(managerId);
     const mgrCancel = await call("gaming:session:cancel", { session_id: tab1.data.id, reason: "اتفتح غلط" });

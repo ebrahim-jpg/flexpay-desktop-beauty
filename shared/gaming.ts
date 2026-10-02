@@ -13,13 +13,14 @@ export const MAX_AREA_LENGTH = 40;
 /** اسم مفيش منطقة ليه في تابات صفحة الطاولات */
 export const NO_AREA_LABEL = "بدون منطقة";
 
-// merged = حساب طاولة اتدمج في حساب تاني (طلباته اتنقلت هناك) — مش إلغاء
-export type GamingSessionStatus = "open" | "closed" | "cancelled" | "merged";
+// ⚠️ مفيش `merged`: دمج الحسابات اتشال من نسخة التجميل — كان بيمسح نصيب حلاق
+// (البنود المتشابهة بتتجمع في صف واحد باسم حلاق واحد والتاني يروح). العمود
+// `merged_into_id` والحالة `'merged'` فاضلين في الداتابيز بس ومحدش بيكتبهم.
+export type GamingSessionStatus = "open" | "closed" | "cancelled";
 export const GAMING_STATUS_LABELS: Record<GamingSessionStatus, string> = {
   open: "مفتوح",
   closed: "اتحاسب",
   cancelled: "ملغي",
-  merged: "اتدمج",
 };
 
 /** «ساعة» · «ساعتين» · «ساعة ونص» · «45 دقيقة» — مدة حجز الطاولة وشرايط التنبيه */
@@ -116,17 +117,6 @@ export interface CheckoutSessionInput {
   notes?: string | null;
 }
 
-/** بند من الحساب في تقسيم الفاتورة — كمية جزئية مسموحة */
-export interface SplitLineInput {
-  item_id: number;
-  quantity: number;
-}
-
-/** دفع جزء من حساب الطاولة: فاتورة للبنود دي، والحساب يفضل مفتوح بالباقي */
-export interface SplitCheckoutInput extends CheckoutSessionInput {
-  lines: SplitLineInput[];
-}
-
 /** عرض حساب الطاولة من السيرفر بنفس تسعير الفاتورة */
 export interface SessionQuote {
   at: string;
@@ -187,7 +177,7 @@ export interface GamingSessionDTO {
   /** الحلاق الأساسي للجلسة — الخدمات بتورثه */
   staff_id: number | null;
   staff_name: string | null;
-  /** الحساب اللي الطاولة دي اتدمجت فيه (status = merged) */
+  /** موروث: الدمج اتشال فالعمود ده بيرجع null دايماً */
   merged_into_id: number | null;
   room_id: number;
   room_name: string;

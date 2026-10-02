@@ -10,7 +10,6 @@ import {
   TABLE_SESSION_SOURCE,
   tableElapsedMinutes,
   type RoomKind,
-  type SplitCheckoutInput,
   type GamingRoomDTO,
   type GamingSessionDTO,
   type GamingSessionStatus,
@@ -281,13 +280,7 @@ export class GamingRepository extends BaseRepository {
     const s = this.sessionRow(id);
     if (!s) throw new Error("الحساب غير موجود");
     if (s.status !== "open") {
-      throw new Error(
-        s.status === "closed"
-          ? "الحساب اتحاسب قبل كده"
-          : s.status === "merged"
-            ? "الحساب ده اتدمج في طاولة تانية"
-            : "الحساب ملغي"
-      );
+      throw new Error(s.status === "closed" ? "الحساب اتحاسب قبل كده" : "الحساب ملغي");
     }
     return s;
   }
@@ -933,7 +926,7 @@ export class GamingRepository extends BaseRepository {
     });
   }
 
-  // ===================== نقل · دمج · تقسيم =====================
+  // ===================== نقل الجلسة لكرسي تانية =====================
 
   /** نقل الحساب بطلباته لطاولة فاضية (الزباين غيّروا مكانهم) */
   transferSession(sessionId: number, toRoomId: number): GamingSessionDTO {
@@ -941,7 +934,8 @@ export class GamingRepository extends BaseRepository {
     const target = this.roomRow(toRoomId);
     if (!target || target.is_active !== 1 || target.kind !== TABLE) throw new Error("الطاولة مش موجودة أو متوقفة");
     if (target.id === s.room_id) throw new Error("الحساب على الطاولة دي بالفعل");
-    if (this.hasOpenSession(target.id)) throw new Error(`${target.name} عليها حساب مفتوح — استخدم الدمج لو هيقعدوا مع بعض`);
+    // ⚠️ كانت بتقول «استخدم الدمج» — والدمج اتشال من النسخة دي
+    if (this.hasOpenSession(target.id)) throw new Error(`${target.name} عليها جلسة مفتوحة — اختار كرسي فاضية`);
     const now = this.now();
     try {
       return this.transaction(() => {
@@ -956,134 +950,6 @@ export class GamingRepository extends BaseRepository {
       if (isUniqueOpenViolation(e)) throw new Error(`${target.name} عليها حساب مفتوح`);
       throw e;
     }
-  }
-
-  /**
-   * دمج حساب طاولة في حساب طاولة تانية: البنود بتتنقل (والمتشابه بيتجمع في بند واحد)،
-   * والحساب اللي اتدمج بيبقى `merged` — **مش ملغي**: الطلبات هتتحاسب في الحساب التاني.
-   */
-  mergeSessions(fromId: number, intoId: number, actor?: Actor): GamingSessionDTO {
-    if (fromId === intoId) throw new Error("مينفعش تدمج الحساب في نفسه");
-    const from = this.openSessionRow(fromId);
-    const into = this.openSessionRow(intoId);
-    const now = this.now();
-    return this.transaction(() => {
-      for (const it of this.loadItemRows(from.id)) {
-        const same = this.db
-          .prepare(
-            `SELECT id, quantity FROM gaming_session_items
-             WHERE session_id = ? AND product_id = ? AND modifier_option_ids = ? AND COALESCE(notes, '') = ?
-               AND COALESCE(variant_id, 0) = ?`
-          )
-          .get(into.id, it.product_id, it.modifier_option_ids, it.notes ?? "", it.variant_id ?? 0) as
-          | { id: number; quantity: number }
-          | undefined;
-        if (same) {
-          // ⚠️ `sent_qty` بيتجمع زي الكمية: من غير كده دمج طاولتين بيخلّي أصناف
-          // **راحت للمطبخ خلاص** تبان معلّقة وتتطبع تاني في الدفعة الجاية.
-          this.db
-            .prepare(
-              "UPDATE gaming_session_items SET quantity = @q, sent_qty = sent_qty + @sent WHERE id = @id"
-            )
-            .run({ q: same.quantity + it.quantity, sent: it.sent_qty ?? 0, id: same.id });
-          this.db.prepare("DELETE FROM gaming_session_items WHERE id = ?").run(it.id);
-        } else {
-          this.db.prepare("UPDATE gaming_session_items SET session_id = ? WHERE id = ?").run(into.id, it.id);
-        }
-      }
-      if (into.customer_id == null && from.customer_id != null) {
-        this.db
-          .prepare("UPDATE gaming_sessions SET customer_id = ?, customer_name = ? WHERE id = ?")
-          .run(from.customer_id, from.customer_name, into.id);
-      }
-      this.db
-        .prepare(
-          `UPDATE gaming_sessions SET status = 'merged', merged_into_id = @into, ended_at = @now,
-             closed_by = @actor_id, closed_by_name = @actor_name, actual_minutes = @actual,
-             updated_at = @now, sync_status = 'pending'
-           WHERE id = @id`
-        )
-        .run({
-          id: from.id,
-          into: into.id,
-          now,
-          actor_id: actor?.id ?? null,
-          actor_name: actor?.name ?? null,
-          actual: round2(tableElapsedMinutes(from.started_at, now)),
-        });
-      this.db.prepare("UPDATE gaming_sessions SET updated_at = ?, sync_status = 'pending' WHERE id = ?").run(now, into.id);
-      this.enqueueSession(from.id, "UPDATED");
-      this.enqueueSession(into.id, "UPDATED");
-      return this.toDTO(this.sessionRow(into.id)!);
-    });
-  }
-
-  /** بنود الجزء المختار من الحساب — كل بند لازم يكون على الحساب وبكمية مش أكبر من اللي عليه */
-  private pickSplit(s: SessionRow, lines: SplitCheckoutInput["lines"] | undefined) {
-    const wanted = new Map<number, number>();
-    for (const l of lines ?? []) {
-      assertPositive(l.quantity, "الكمية");
-      wanted.set(l.item_id, (wanted.get(l.item_id) ?? 0) + l.quantity);
-    }
-    if (wanted.size === 0) throw new Error("اختار البنود اللي هتتدفع");
-    const rows = new Map(this.loadItemRows(s.id).map((r) => [r.id, r]));
-    const picked: SessionItemDTO[] = [];
-    for (const [itemId, qty] of wanted) {
-      const row = rows.get(itemId);
-      if (!row) throw new Error("بند مش على الحساب ده");
-      if (qty > row.quantity + 1e-9) throw new Error(`${row.product_name}: المطلوب أكتر من اللي على الحساب (${row.quantity})`);
-      picked.push({ ...this.itemDTO(row), quantity: qty });
-    }
-    return { wanted, rows, picked };
-  }
-
-  /** عرض جزء من الحساب بنفس تسعير الفاتورة — الواجهة مابتحسبش إجمالي موازي */
-  quoteSplit(
-    sessionId: number,
-    lines: SplitCheckoutInput["lines"],
-    discountType: "none" | "percentage" | "fixed" = "none",
-    discountValue = 0
-  ): Omit<SessionQuote, "at" | "actual_minutes"> {
-    const s = this.openSessionRow(sessionId);
-    const { picked } = this.pickSplit(s, lines);
-    const itemsSubtotal = ordersRepository.calculateTotals({
-      items: this.orderItems(picked),
-      discount_type: "none",
-      discount_value: 0,
-    }).subtotal;
-    const totals = computeTotals(itemsSubtotal, discountType, discountValue, this.settings().taxRate);
-    return {
-      items_subtotal: itemsSubtotal,
-      subtotal: totals.subtotal,
-      discount_amount: totals.discount_amount,
-      tax_rate: totals.tax_rate,
-      tax_amount: totals.tax_amount,
-      total: totals.total,
-    };
-  }
-
-  /**
-   * تقسيم الفاتورة: فاتورة للبنود المختارة (كمية جزئية مسموحة)، والحساب يفضل مفتوح بالباقي.
-   * آخر جزء بيقفل الحساب ويتربط بفاتورته. كل الأجزاء عليها `session_id` نفسه.
-   */
-  splitCheckout(input: SplitCheckoutInput, actor: Actor): CheckoutSessionResult {
-    const s = this.openSessionRow(input.session_id);
-    const { wanted, rows, picked } = this.pickSplit(s, input.lines);
-    const at = this.now();
-    return this.transaction(() => {
-      // ① فاتورة الجزء — العميل بتاع الجزء ده بس (كل واحد بيدفع لنفسه)
-      const result = this.createSessionOrder(s, picked, input, input.customer_id ?? null, actor);
-      // ② نقص البنود اللي اتدفعت من الحساب
-      for (const [itemId, qty] of wanted) {
-        const row = rows.get(itemId)!;
-        const rest = Math.round((row.quantity - qty) * 1000) / 1000;
-        if (rest <= 0) this.db.prepare("DELETE FROM gaming_session_items WHERE id = ?").run(itemId);
-        else this.db.prepare("UPDATE gaming_session_items SET quantity = ? WHERE id = ?").run(rest, itemId);
-      }
-      // ③ آخر جزء بيقفل الحساب
-      if (this.loadItemRows(s.id).length === 0) this.closeSession(s, at, actor, result.order.id, s.customer_id);
-      return { ...result, session: this.toDTO(this.sessionRow(s.id)!) };
-    });
   }
 
   // ===== الإلغاء = بلا فاتورة وبلا فلوس (الصلاحية والتدقيق في الـIPC) =====
