@@ -3,7 +3,7 @@ import { ordersRepository } from "./orders.repository";
 import { sizesRepository } from "./sizes.repository";
 import { customersRepository } from "./customers.repository";
 import { assertPositive } from "../../shared/validation";
-import { computeTotals, type CreateOrderResult } from "../../shared/orders";
+import { computeDiscountAmount, computeTotals, type CreateOrderResult } from "../../shared/orders";
 import {
   formatSessionNumber,
   MAX_AREA_LENGTH,
@@ -796,9 +796,9 @@ export class GamingRepository extends BaseRepository {
     const isFree = input.is_free === true;
     const orderItems = this.orderItems(items);
     // ⚠️ **العمولة**: لقطة «مين عمل إيه» بتتحوّل لـ`order_sellers` مع الفاتورة.
-    // نصيب كل واحد = **مجموع أسعار بنوده بالظبط** — مش تقسيم بالفئات ولا بالتساوي.
+    // نصيب كل واحد = مجموع أسعار بنوده **ناقص نصيبه من الخصم**.
     // (نسخة التجزئة بتسند لكل البائعين الحاضرين؛ هنا الإسناد **صريح** فأدق منها.)
-    const staffShares = this.staffShares(items);
+    const staffShares = this.staffShares(items, input);
     // غير الكاش: المدفوع = الإجمالي بالظبط (مفيش «باقي» في الكارت/المحفظة)
     let amountPaid = input.amount_paid;
     if (!isFree && input.payment_method !== "cash") {
@@ -831,11 +831,30 @@ export class GamingRepository extends BaseRepository {
   }
 
   /**
-   * نصيب كل حلاق من الجلسة = مجموع أسعار بنوده.
+   * نصيب كل حلاق من الجلسة = مجموع أسعار بنوده **بعد الخصم**.
+   *
+   * 🔴 القاعدة الملزمة: **مجموع الأنصبة = صافي الفاتورة** (الإجمالي ناقص الخصم،
+   * قبل الضريبة — الضريبة فلوس الدولة مش إيراد المحل ولا نصيب حلاق).
+   *
+   * الباج اللي اتصلّح: كان بيسعّر كل بند بـ`discount_type: "none"` فالأنصبة تتجمع
+   * **قبل** الخصم والفاتورة **بعده** — فاتورة ٤٨٠ بخصم ٨٠ = ٤٠٠ في الدرج و٤٨٠ في
+   * `order_sellers`. وتقرير الأداء بيجمع من `order_sellers` فالمحل كان بيدفع عمولة
+   * على فلوس مادخلتش، والإيراد المعروض لكل حلاق مضروب.
+   *
+   * الخصم بيتوزّع **بالتناسب** مع نصيب كل واحد (اللي خدمته أغلى يشيل من الخصم أكتر)،
+   * و**فضلة التقريب بتروح للأكبر نصيباً** عشان المجموع يقفل بالمليم: ٣ حلاقين على
+   * صافي ٢٠ = ٦٫٦٧×٣ = ٢٠٫٠١، فواحد بياخد ٦٫٦٦.
+   *
+   * **الفاتورة المجانية = صفر عمولة**: المحل ماخدش فلوس فمايدفعش عمولة على هدية
+   * (ولو مادفعناش الصفر ده، الهدية تبقى باب لصرف عمولات على مبيعات مالهاش وجود).
+   *
    * التسعير بيتحسب من `calculateTotals` (سيرفر-سايد) عشان يطابق الفاتورة بالحرف —
    * ممنوع الواجهة تحسب نصيب موازي.
    */
-  private staffShares(items: SessionItemDTO[]): { id: number; name: string; amount: number }[] {
+  private staffShares(
+    items: SessionItemDTO[],
+    input: Pick<CheckoutSessionInput, "discount_type" | "discount_value" | "is_free">
+  ): { id: number; name: string; amount: number }[] {
     const by = new Map<number, { id: number; name: string; amount: number }>();
     for (const it of items) {
       if (it.staff_id == null) continue;
@@ -853,7 +872,28 @@ export class GamingRepository extends BaseRepository {
       if (cur) cur.amount = round2(cur.amount + amount);
       else by.set(it.staff_id, { id: it.staff_id, name: it.staff_name ?? "—", amount: round2(amount) });
     }
-    return [...by.values()];
+    const shares = [...by.values()];
+    if (shares.length === 0) return shares;
+
+    // هدية: قيمة الفاتورة محفوظة بس مفيش فلوس دخلت → مفيش عمولة
+    if (input.is_free === true) {
+      for (const s of shares) s.amount = 0;
+      return shares;
+    }
+
+    const gross = round2(shares.reduce((t, s) => t + s.amount, 0));
+    const discount = computeDiscountAmount(gross, input.discount_type, input.discount_value);
+    if (discount <= 0 || gross <= 0) return shares;
+
+    const net = round2(gross - discount);
+    for (const s of shares) s.amount = round2((s.amount * net) / gross);
+    // فضلة التقريب للأكبر نصيباً — الفرق مليم أو اتنين، بس المجموع لازم يقفل
+    const drift = round2(net - shares.reduce((t, s) => t + s.amount, 0));
+    if (drift !== 0) {
+      const biggest = shares.reduce((a, b) => (b.amount > a.amount ? b : a));
+      biggest.amount = round2(biggest.amount + drift);
+    }
+    return shares;
   }
 
   private closeSession(s: SessionRow, at: string, actor: Actor, orderId: number, customerId: number | null): void {
