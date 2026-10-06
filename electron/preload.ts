@@ -4,7 +4,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 // لا وصول مباشر لـ SQLite من الـ Renderer (الدستور §3).
 
 // القنوات المسموح للـ Main يبعت عليها للـ Renderer (push events)
-const ALLOWED_EVENTS = new Set<string>(["sync:status", "online-orders:new", "bookings:new"]);
+const ALLOWED_EVENTS = new Set<string>(["sync:status", "bookings:new"]);
 
 contextBridge.exposeInMainWorld("electron", {
   invoke: (channel: string, ...args: unknown[]) =>

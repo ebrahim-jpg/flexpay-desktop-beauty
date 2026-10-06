@@ -104,7 +104,7 @@ export function registerDataTransferIpc(): void {
     handleAsync<string | null>(async () => {
       const cat = categoryId != null ? categoriesRepository.getAll().find((c) => c.id === categoryId) : null;
       const suffix = cat ? `-${cat.name}` : "";
-      const file = await pickSave("تصدير المنتجات", `منتجات${suffix}-${stamp()}.xlsx`);
+      const file = await pickSave("تصدير الخدمات", `خدمات${suffix}-${stamp()}.xlsx`);
       if (!file) return null;
       const items =
         categoryId != null
@@ -118,7 +118,6 @@ export function registerDataTransferIpc(): void {
           cost_price: p.cost_price,
           barcode: p.barcode,
           category_name: p.category_name,
-          sale_type: p.sale_type,
         }))
       );
       return file;
@@ -127,7 +126,7 @@ export function registerDataTransferIpc(): void {
 
   ipcMain.handle("data:products:template", () =>
     handleAsync<string | null>(async () => {
-      const file = await pickSave("حفظ قالب المنتجات", "قالب-المنتجات.xlsx");
+      const file = await pickSave("حفظ قالب الخدمات", "قالب-الخدمات.xlsx");
       if (!file) return null;
       await writeProductTemplate(file);
       return file;

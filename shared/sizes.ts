@@ -42,7 +42,7 @@ export function sizeLabel(size: string | null | undefined): string {
   return s.length ? s : "";
 }
 
-/** «بيتزا — لارج» للفاتورة وتذكرة المطبخ */
+/** «صبغة — شعر طويل» للفاتورة */
 export function productWithSize(productName: string, size: string | null | undefined): string {
   const s = sizeLabel(size);
   return s ? `${productName} — ${s}` : productName;

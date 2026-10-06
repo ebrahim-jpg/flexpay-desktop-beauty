@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ScanLine, Upload, Trash2, Package } from "lucide-react";
+import { Upload, Trash2, Scissors } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -19,11 +19,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ModifierBuilder } from "./ModifierBuilder";
 import { RecipeBuilder } from "./RecipeBuilder";
-import { SizesBuilder } from "./SizesBuilder";
 import { useIPC } from "@/hooks/useIPC";
-import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { productSchema } from "@/lib/validations/product.schema";
-import { parseBarcode } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
 import type {
   CategoryDTO,
@@ -57,22 +54,18 @@ export function ProductModal({
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [barcode, setBarcode] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isAvailable, setIsAvailable] = useState(true);
   // ⚠️ نسخة البلايستيشن: المنتجات بالقطعة بس — مفيش اختيار «بالوزن» (والـmain بيجبر piece)
   const [modifiers, setModifiers] = useState<ModifierGroup[]>([]);
   // المنتج بأحجام: السعر بيتحسب من أرخص حجم فالخانة بتتقفل
-  const [hasSizes, setHasSizes] = useState(false);
   // خدمة (حلاقة/صبغة) ولا منتج على رف — ومدتها بالدقايق
-  const [isService, setIsService] = useState(false);
   const [duration, setDuration] = useState("");
 
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [removeImageFlag, setRemoveImageFlag] = useState(false);
 
-  const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -82,29 +75,14 @@ export function ProductModal({
     setCategoryId(editing?.category_id ?? defaultCategoryId ?? null);
     setPrice(editing ? String(editing.price) : "");
     setDescription(editing?.description ?? "");
-    setBarcode(editing?.barcode ?? "");
     setIsActive(editing?.is_active ?? true);
     setIsAvailable(editing?.is_available ?? true);
     setModifiers(editing?.modifiers ?? []);
-    setHasSizes(editing?.has_sizes ?? false);
-    setIsService(editing?.is_service ?? false);
     setDuration(editing?.duration_minutes ? String(editing.duration_minutes) : "");
     setImageDataUrl(null);
     setImagePreview(editing?.image ?? null);
     setRemoveImageFlag(false);
-    setScanning(false);
   }, [open, editing, defaultCategoryId]);
-
-  // استقبال مدخل السكانر عند تفعيل وضع المسح
-  useBarcodeScanner({
-    enabled: open && scanning,
-    onScan: (code) => {
-      const parsed = parseBarcode(code);
-      setBarcode(parsed.lookupCode);
-      setScanning(false);
-      toast.success("تم مسح الباركود");
-    },
-  });
 
   function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -135,7 +113,6 @@ export function ProductModal({
       category_id: categoryId ?? 0,
       price: Number(price),
       description: description || null,
-      barcode: barcode || null,
       is_active: isActive,
     });
     if (!parsed.success) {
@@ -152,29 +129,27 @@ export function ProductModal({
           category_id: categoryId,
           price: Number(price),
           description: description.trim() || null,
-          barcode: barcode.trim() || null,
           is_active: isActive,
           is_available: isAvailable,
           sale_type: "piece",
-          is_service: isService,
+          is_service: true,
           duration_minutes: Number(duration) || 0,
           modifiers,
         };
         if (imageDataUrl) payload.imageDataUrl = imageDataUrl;
         if (removeImageFlag) payload.removeImage = true;
         await invoke("products:update", payload);
-        toast.success("تم حفظ المنتج");
+        toast.success("تم حفظ الخدمة");
       } else {
         const payload: CreateProductInput = {
           name: name.trim(),
           category_id: categoryId,
           price: Number(price),
           description: description.trim() || null,
-          barcode: barcode.trim() || null,
           is_active: isActive,
           is_available: isAvailable,
           sale_type: "piece",
-          is_service: isService,
+          is_service: true,
           duration_minutes: Number(duration) || 0,
           modifiers,
           imageDataUrl: imageDataUrl ?? undefined,
@@ -195,13 +170,12 @@ export function ProductModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "تعديل منتج" : "إضافة منتج"}</DialogTitle>
+          <DialogTitle>{isEdit ? "تعديل خدمة" : "إضافة خدمة"}</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="basic">
           <TabsList>
             <TabsTrigger value="basic">المعلومات الأساسية</TabsTrigger>
-            <TabsTrigger value="sizes">الأحجام</TabsTrigger>
             <TabsTrigger value="modifiers">الخيارات والإضافات</TabsTrigger>
             <TabsTrigger value="recipe">الوصفة</TabsTrigger>
           </TabsList>
@@ -213,9 +187,9 @@ export function ProductModal({
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-secondary">
                 {imagePreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imagePreview} alt="صورة المنتج" className="h-full w-full object-cover" />
+                  <img src={imagePreview} alt="صورة الخدمة" className="h-full w-full object-cover" />
                 ) : (
-                  <Package className="h-8 w-8 text-text-secondary" />
+                  <Scissors className="h-8 w-8 text-text-secondary" />
                 )}
               </div>
               <div className="flex flex-col gap-2">
@@ -264,40 +238,7 @@ export function ProductModal({
                   onChange={(e) => setPrice(e.target.value)}
                   dir="ltr"
                   className="text-right"
-                  disabled={hasSizes}
                 />
-                {hasSizes && (
-                  <p className="text-xs text-text-secondary">
-                    المنتج ده بأحجام — السعر بيتحسب لوحده من أرخص حجم («يبدأ من»). عدّله من تاب
-                    «الأحجام».
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label>الباركود</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={barcode}
-                    onChange={(e) => setBarcode(e.target.value)}
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="اختياري"
-                  />
-                  <Button
-                    type="button"
-                    variant={scanning ? "accent" : "outline"}
-                    size="icon"
-                    onClick={() => setScanning((v) => !v)}
-                    title="مسح بالسكانر"
-                  >
-                    <ScanLine className="h-4 w-4" />
-                  </Button>
-                </div>
-                {scanning && (
-                  <p className="text-xs text-accent-foreground">
-                    وجّه السكانر على الباركود الآن...
-                  </p>
-                )}
               </div>
             </div>
 
@@ -308,49 +249,26 @@ export function ProductModal({
 
             {/* ملاحظة: "شيل من الكاشير" (is_active) بقى إجراء مالك فقط من كارت المنتج،
                 مش توجل هنا — عشان مايتخطاش قيد المالك. */}
-            {/* ⚙️ خدمة ولا منتج — ومدتها.
-                ⚠️ الخدمة **برضه بتستهلك مواد** (الصبغة بتخصم صبغة وفويل)،
-                فتاب «الوصفة» بيفضل شغّال زي أي منتج. الفرق في الجرد والتقارير. */}
+            {/* ⚠️ مفيش مبدّل «منتج/خدمة»: النسخة دي **خدمات بس** والـmain بيثبّت
+                `is_service = 1` مهما بعتت الواجهة. والخدمة **برضه بتستهلك مواد**
+                (الصبغة بتخصم صبغة وفويل) فتاب «الوصفة» شغّال عادي. */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>النوع</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={isService ? "outline" : "primary"}
-                    className="flex-1"
-                    onClick={() => setIsService(false)}
-                  >
-                    منتج
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isService ? "primary" : "outline"}
-                    className="flex-1"
-                    onClick={() => setIsService(true)}
-                  >
-                    خدمة
-                  </Button>
-                </div>
+                <Label>المدة (دقايق)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={5}
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value)}
+                  dir="ltr"
+                  className="text-right"
+                  placeholder="٣٠"
+                />
+                <p className="text-xs text-text-secondary">
+                  مدة الخدمة — بتظهر للزبون على رابط الحجز وبتمنع تعارض المواعيد.
+                </p>
               </div>
-              {isService && (
-                <div className="space-y-1.5">
-                  <Label>المدة (دقايق)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={5}
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    dir="ltr"
-                    className="text-right"
-                    placeholder="٣٠"
-                  />
-                  <p className="text-xs text-text-secondary">
-                    بتتستخدم في المواعيد ومقارنة المدة الفعلية بالمتوقّعة.
-                  </p>
-                </div>
-              )}
             </div>
 
             <div className="flex flex-wrap gap-6">
@@ -361,22 +279,6 @@ export function ProductModal({
             </div>
           </TabsContent>
 
-          <TabsContent value="sizes">
-            <SizesBuilder
-              productId={editing?.id ?? null}
-              onChanged={(sizes) => {
-                setHasSizes(sizes.length > 0);
-                const cheapest = sizes
-                  .filter((x) => x.is_active)
-                  .map((x) => x.price)
-                  .sort((a, b) => a - b)[0];
-                if (cheapest != null) setPrice(String(cheapest));
-                onSaved();
-              }}
-            />
-          </TabsContent>
-
-          {/* Tab 2 */}
           <TabsContent value="modifiers">
             <ModifierBuilder value={modifiers} onChange={setModifiers} />
           </TabsContent>

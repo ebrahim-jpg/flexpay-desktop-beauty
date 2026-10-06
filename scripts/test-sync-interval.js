@@ -75,16 +75,22 @@ try {
   );
 
   // ===== ⑥ حاجة مستنية ترفع → سحب فوري مهما كان الفاصل =====
-  set("pullIntervalMs", 600_000); // متجر مقفول
+  set("pullIntervalMs", 600_000); // الحجز مقفول
   set("lastPullAt", Date.now());
   ok(engine.dueForPull() === false, "بفاصل 10 دقايق: مش مستحق بالتوقيت");
+  // ⚠️ النسخة دي **خدمات بس**: مفيش طلبات متجر خالص، فاللي بيخلّي السحب
+  // يحصل فوراً هو **قرار الموظف على حجز** (تأكيد/رفض) — لازم يوصل الويب
+  // عشان الزبون يعرف ميعاده اتأكّد، مهما كان الفاصل طويل.
+  const nowIso = new Date().toISOString();
   db.prepare(
-    `INSERT INTO online_orders (local_id, status, customer_phone, items, web_acked)
-     VALUES ('oo-x','new','0100',' []',0)`
-  ).run();
+    `INSERT INTO room_bookings
+       (local_id, status, kind, room_desktop_id, room_name, customer_phone,
+        starts_at, duration_minutes, business_date, pulled_at, web_acked)
+     VALUES ('rb-x','new','table',0,'كرسي 1','0100',?,30,?,?,0)`
+  ).run(nowIso, nowIso.slice(0, 10), nowIso);
   ok(
     engine.hasPendingUplink() === true,
-    "طلب لسه ماتأكّدش استلامه → فيه حاجة تترفع"
+    "حجز لسه ماتأكّدش استلامه → فيه حاجة تترفع"
   );
 
   // ===== ⑦ الحساب اللي حصل عشانه كل ده =====
@@ -92,10 +98,10 @@ try {
   const afterIdle = Math.round(86_400_000 / IDLE);
   const afterStoreOff = Math.round(86_400_000 / 600_000);
   console.log(`\n  طلبات السحب/يوم — قبل: ${before}`);
-  console.log(`  بعد (متجر شغّال هادي): ${afterIdle}`);
-  console.log(`  بعد (متجر مقفول):      ${afterStoreOff}`);
-  ok(afterStoreOff <= before / 50, "متجر مقفول: توفير 50× على الأقل");
-  ok(afterIdle <= before / 5, "متجر هادي: توفير 5× على الأقل");
+  console.log(`  بعد (حجز شغّال هادي): ${afterIdle}`);
+  console.log(`  بعد (حجز مقفول):      ${afterStoreOff}`);
+  ok(afterStoreOff <= before / 50, "الحجز مقفول: توفير 50× على الأقل");
+  ok(afterIdle <= before / 5, "حجز هادي: توفير 5× على الأقل");
 
   console.log("\nSYNC_INTERVAL_TEST_OK");
 } catch (e) {

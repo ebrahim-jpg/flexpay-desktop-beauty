@@ -44,7 +44,7 @@ app.whenReady().then(() => {
       .run();
     const prodInfo = db
       .prepare(
-        "INSERT INTO products (local_id, name, category_id, price, barcode, sync_status) VALUES ('prod-1','قهوة',?,25,'6221031','pending')"
+        "INSERT INTO products (local_id, name, category_id, price, is_service, sync_status) VALUES ('prod-1','قص شعر',?,25,1,'pending')"
       )
       .run(catInfo.lastInsertRowid);
     const prod = db
@@ -55,7 +55,7 @@ app.whenReady().then(() => {
     let barcodeUniqueEnforced = false;
     try {
       db.prepare(
-        "INSERT INTO products (local_id, name, price, barcode, sync_status) VALUES ('prod-2','تاني',10,'6221031','pending')"
+        "INSERT INTO products (local_id, name, price, is_service, sync_status) VALUES ('prod-2','تاني',10,1,'pending')"
       ).run();
     } catch {
       barcodeUniqueEnforced = true;

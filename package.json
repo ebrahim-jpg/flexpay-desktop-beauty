@@ -2,7 +2,7 @@
   "name": "flexpay-desktop-beauty",
   "version": "1.0.0",
   "private": true,
-  "description": "FlexPay â€” Ù†Ø¸Ø§Ù… Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø­Ù„Ø§Øª (Desktop POS)",
+  "description": "FlexPay التجميل — نظام إدارة الصالونات ومحلات الحلاقة (خدمات بس)",
   "author": "FlexPay",
   "main": "dist-electron/electron/main.js",
   "scripts": {

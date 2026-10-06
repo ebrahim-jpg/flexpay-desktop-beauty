@@ -5,13 +5,12 @@ import { toast } from "sonner";
 import {
   ArrowLeftRight,
   CalendarClock,
-  Coffee,
+  Armchair,
   Play,
   Receipt,
   Settings2,
-  ShoppingBag,
   UserRound,
-  UtensilsCrossed,
+  Scissors,
   Zap,
   XCircle,
 } from "lucide-react";
@@ -22,15 +21,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AddDrinksDialog } from "@/components/gaming/AddDrinksDialog";
+import { AddServicesDialog } from "@/components/gaming/AddServicesDialog";
 import { StaffPicker } from "@/components/beauty/StaffPicker";
 import { QuickSessionDialog } from "@/components/beauty/QuickSessionDialog";
 import { SessionCheckoutModal } from "@/components/gaming/SessionCheckoutModal";
 import { TablesManager } from "@/components/gaming/TablesManager";
-import { QuickSaleDialog } from "@/components/gaming/QuickSaleDialog";
 import { useSessionAlarm } from "@/components/gaming/useSessionAlarm";
-import { CustomerSearch } from "@/components/pos/CustomerSearch";
-import { ReceiptModal } from "@/components/pos/ReceiptModal";
+import { CustomerSearch } from "@/components/sales/CustomerSearch";
+import { ReceiptModal } from "@/components/sales/ReceiptModal";
 import { useIPC } from "@/hooks/useIPC";
 import { useAuthStore } from "@/store/auth.store";
 import { useSettingsStore } from "@/store/settings.store";
@@ -83,7 +81,6 @@ export default function TablesPage() {
   const [customerFor, setCustomerFor] = useState<GamingSessionDTO | null>(null);
   const [receipt, setReceipt] = useState<OrderDTO | null>(null);
   const [managing, setManaging] = useState(false);
-  const [quickOpen, setQuickOpen] = useState(false);
   const [muted, setMuted] = useState<Set<string>>(() => new Set());
 
   const load = useCallback(async () => {
@@ -215,10 +212,6 @@ export default function TablesPage() {
                 إدارة الكراسي
               </Button>
             )}
-            <Button variant="accent" onClick={() => setQuickOpen(true)}>
-              <ShoppingBag />
-              بيع سريع
-            </Button>
           </div>
         }
       />
@@ -253,7 +246,7 @@ export default function TablesPage() {
         <LoadingSkeleton rows={4} />
       ) : tables.length === 0 ? (
         <EmptyState
-          icon={Coffee}
+          icon={Armchair}
           title="لسه مفيش كراسي"
           description="ضيف الكراسي وقسّمها مناطق لو عايز — من غير أسعار ولا عدد كراسي."
           action={
@@ -350,7 +343,7 @@ export default function TablesPage() {
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <Button variant="outline" className="col-span-2" onClick={() => setOrdersFor(session)}>
-                    <UtensilsCrossed />
+                    <Scissors />
                     الطلبات
                   </Button>
                   <Button variant="outline" disabled={freeTables.length === 0} onClick={() => setTransferFor(session)}>
@@ -419,7 +412,7 @@ export default function TablesPage() {
         }}
       />
 
-      <AddDrinksDialog session={ordersFor} open={!!ordersFor} onOpenChange={(o) => !o && setOrdersFor(null)} onChanged={replaceSession} />
+      <AddServicesDialog session={ordersFor} open={!!ordersFor} onOpenChange={(o) => !o && setOrdersFor(null)} onChanged={replaceSession} />
 
       <SessionCheckoutModal
         session={checkoutFor}
@@ -472,7 +465,6 @@ export default function TablesPage() {
         </DialogContent>
       </Dialog>
 
-      <QuickSaleDialog open={quickOpen} onOpenChange={setQuickOpen} onSold={() => void load()} />
 
       <Dialog open={managing} onOpenChange={setManaging}>
         <DialogContent className="max-w-2xl">

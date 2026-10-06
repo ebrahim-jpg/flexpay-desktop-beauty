@@ -2,7 +2,6 @@ import { BaseRepository } from "./base.repository";
 import { inventoryRepository } from "./inventory.repository";
 import { sizesRepository } from "./sizes.repository";
 import { customersRepository } from "./customers.repository";
-import { onlineOrdersRepository } from "./online-orders.repository";
 import { settingsRepository } from "./settings.repository";
 import { assertPositive, assertNonNegative } from "../../shared/validation";
 import {
@@ -425,11 +424,6 @@ export class OrdersRepository extends BaseRepository {
         customersRepository.updateStats(input.customer_id, totals.total, nowISO);
       }
 
-      // ⑧ ربط طلب المتجر (لو السلة اتملّت منه) → done + هيتبلّغ الويب في السحب الجاي
-      if (input.online_order_local_id) {
-        onlineOrdersRepository.attachOrder(input.online_order_local_id, orderId);
-      }
-
       // ⑨ + ⑩ المزامنة (الطلب الكامل) — الـ audit يُسجَّل في الـ IPC
       const order = this.getById(orderId)!;
       this.enqueue("order", "CREATED", localId, this.syncPayload(orderId));
@@ -453,15 +447,6 @@ export class OrdersRepository extends BaseRepository {
 
       // رجوع المخزون اللي اتخصم للطلب ده (يتزامن مع الويب زي ما اتخصم)
       inventoryRepository.restoreForOrder(id, actorId);
-
-      // لو البيعة دي كانت طلب متجر: الطلب يتلغي كمان ويترفع للويب، وإلا الزبون
-
-      // بيفضل شايف «اتسلّم 🎉» لفاتورة اتلغت. جوّه الترانزاكشن عشان الاتنين
-
-      // يحصلوا مع بعض أو ولا واحد.
-
-      onlineOrdersRepository.cancelByDesktopOrderId(id);
-
 
       const order = this.getById(id)!;
       this.enqueue("order", "UPDATED", order.local_id, this.syncPayload(id));

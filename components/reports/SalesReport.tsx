@@ -60,8 +60,7 @@ export function SalesReport() {
   const [category, setCategory] = useState("all");
   const [perCategory, setPerCategory] = useState(false);
   const [typeFilter, setTypeFilter] = useState<"all" | "sales" | "free">("all");
-  // المصدر بدل «القناة/الدليفري»: مفيش توصيل في محل بلايستيشن — الفرق المهم جلسات الغرف مقابل البيع السريع
-  const [source, setSource] = useState<"all" | "table_session" | "pos">("all");
+  // ⚠️ مفيش فلتر «مصدر»: الكاشير والمتجر اتشالوا، فكل فاتورة مصدرها جلسة كرسي.
   const [expanded, setExpanded] = useState<number | null>(null);
 
   const paymentLabel = useCallback(
@@ -116,14 +115,13 @@ export function SalesReport() {
     if (!report) return [];
     let list = report.orders;
     if (cashier !== "all") list = list.filter((o) => o.cashier_id === cashier);
-    if (source !== "all") list = list.filter((o) => o.source === source);
     if (category !== "all") {
       list = list.filter((o) =>
         o.items.some((i) => catOf(i.category_name) === category)
       );
     }
     return list;
-  }, [report, cashier, category, source]);
+  }, [report, cashier, category]);
 
   // أساس الفلوس: المدفوع وغير المجاني فقط (المجانية متتحسبش خالص)
   const paidVisible = useMemo(
@@ -307,20 +305,6 @@ export function SalesReport() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm text-text-secondary">المصدر</label>
-            <Select
-              value={source}
-              onChange={(e) =>
-                setSource(e.target.value as "all" | "table_session" | "pos")
-              }
-              className="min-w-[140px]"
-            >
-              <option value="all">الكل</option>
-              <option value="table_session">الطاولات</option>
-              <option value="pos">بيع سريع</option>
-            </Select>
-          </div>
 
           {category !== "all" && (
             <label className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">

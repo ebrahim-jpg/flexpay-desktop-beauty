@@ -218,7 +218,7 @@ export function InventoryItemModal({
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 list="inv-category-options"
-                placeholder="مشروبات، مخبوزات..."
+                placeholder="صبغة، فويل، شامبو..."
               />
               <datalist id="inv-category-options">
                 {categoryOptions.map((c) => (

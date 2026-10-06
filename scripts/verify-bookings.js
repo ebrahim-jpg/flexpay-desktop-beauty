@@ -87,10 +87,11 @@ console.log("\n— الواجهة —");
 const nav = code("components/shared/nav-items.ts");
 ok(/\/bookings/.test(nav), "«طلبات الحجز» في التنقّل");
 const firstHref = (nav.match(/href:\s*"([^"]+)"/) ?? [])[1];
-ok(firstHref === "/tables", `«الطاولات» أول عنصر في التنقّل (الفعلي ${firstHref})`);
-// ⚠️ اتعكس للمطعم: الكافيه كان بيخفي طلبات المتجر ويسيب الحجز بس. المطعم عنده
-// **الاتنين** (منيو بيستقبل طلبات + حجز طاولات) — ده جوهر المجال مش تسريب تجزئة.
-ok(/\/store-orders/.test(nav), "«طلبات المتجر» **موجودة** جنب الحجز (المطعم عنده الاتنين)");
+ok(firstHref === "/tables", `«الكراسي» أول عنصر في التنقّل (الفعلي ${firstHref})`);
+// ⚠️ الفحص ده **انقلب** في التجميل: المطعم كان عنده الاتنين (منيو بيستقبل طلبات
+// + حجز)، إنما التجميل **خدمات بس** — اللي بيبيع بضاعة بياخد نسخة البيع
+// بالتجزئة. فالحجز لوحده هو الصح هنا.
+ok(!/\/store-orders/.test(nav), "و«طلبات المتجر» **مش** موجودة (خدمات بس)");
 ok(exists("app/(main)/bookings/page.tsx"), "صفحة طلبات الحجز موجودة");
 const page = code("app/(main)/bookings/page.tsx");
 ok(/bookings:confirm/.test(page) && /bookings:reject/.test(page), "الصفحة فيها قبول ورفض");
@@ -99,7 +100,7 @@ ok(/bookings:noShow/.test(page), "الصفحة فيها «مجاش» (الحجز
 
 const rooms = code("app/(main)/tables/page.tsx");
 ok(/bookingTimer\(/.test(rooms), "شاشة الطاولات بتحسب تنبيه الحجز بنفس الدالة المشتركة");
-ok(/انقلهم|طاولة تانية/.test(rooms), "فيه نص «جهّز طاولة تانية أو انقلهم» لما الطاولة عليها ناس");
+ok(/انقلهم|كرسي تانية/.test(rooms), "فيه نص «جهّز كرسي تانية أو انقلهم» لما الكرسي عليها ناس");
 const alarmCalls = (rooms.match(/useSessionAlarm\(/g) ?? []).length;
 ok(alarmCalls === 1, `useSessionAlarm بتتنده مرة واحدة بس (الفعلي ${alarmCalls}) — نداءين = صوتين فوق بعض`);
 ok(!/إقفال تلقائي|autoClose/.test(rooms), "مفيش قفل تلقائي لأي جلسة بسبب حجز (القرار للموظف)");

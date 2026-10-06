@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserRound, UserPlus, X, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useCartStore } from "@/store/cart.store";
 import { useIPC } from "@/hooks/useIPC";
 import { formatDate } from "@/lib/formatters";
 import { CustomerModal } from "@/components/customers/CustomerModal";
@@ -11,21 +10,21 @@ import type { CustomerDTO } from "@/shared/customers";
 
 const isFullPhone = (s: string) => /^\d{11}$/.test(s.trim());
 
+// ⚠️ كان ليه مسار تاني بيقرا ويكتب في **سلة الكاشير** لو محدش بعت `value`.
+// الكاشير اتشال من نسخة التجميل، وكل المستخدمين بيبعتوا القيمة والـ`onChange`
+// صراحةً — فبقوا **إجباريين**. مسار ضمني تاني معناه عميل بيتربط في مكان غلط.
 interface CustomerSearchProps {
-  /** عميل متحكَّم فيه من بره (حساب الجلسة) — من غيره بيقرا ويكتب في سلة البيع السريع */
-  value?: { id: number | null; name: string };
-  onChange?: (id: number | null, name: string) => void;
+  /** العميل الحالي — من حساب الجلسة */
+  value: { id: number | null; name: string };
+  onChange: (id: number | null, name: string) => void;
   inputId?: string;
 }
 
-export function CustomerSearch({ value, onChange, inputId = "pos-customer-search" }: CustomerSearchProps = {}) {
+export function CustomerSearch({ value, onChange, inputId = "customer-search" }: CustomerSearchProps) {
   const { invoke } = useIPC();
-  const cartCustomerId = useCartStore((s) => s.customerId);
-  const cartCustomerName = useCartStore((s) => s.customerName);
-  const cartSetCustomer = useCartStore((s) => s.setCustomer);
-  const customerId = value ? value.id : cartCustomerId;
-  const customerName = value ? value.name : cartCustomerName;
-  const setCustomer = onChange ?? cartSetCustomer;
+  const customerId = value.id;
+  const customerName = value.name;
+  const setCustomer = onChange;
 
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<CustomerDTO[]>([]);

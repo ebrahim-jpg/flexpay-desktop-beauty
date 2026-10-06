@@ -11,7 +11,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useCartStore } from "@/store/cart.store";
 import { useIPC } from "@/hooks/useIPC";
 import { ROLE_LABELS } from "@/shared/permissions";
 import type { SafeUser } from "@/types/ipc.types";
@@ -20,15 +19,13 @@ import type { CustomerDTO } from "@/shared/customers";
 interface FreeRecipientModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** اختيار متحكَّم فيه من بره (حساب الجلسة) — من غيره بيكتب في سلة البيع السريع */
-  onPick?: (type: "staff" | "customer", id: number, name: string) => void;
+  /** إجباري: المستدعي بيربط المجانية بنفسه (سلة الكاشير اتشالت) */
+  onPick: (type: "staff" | "customer", id: number, name: string) => void;
 }
 
 // اختيار المستفيد من الفاتورة المجانية: موظف من المستخدمين أو عميل بالبحث.
 export function FreeRecipientModal({ open, onOpenChange, onPick }: FreeRecipientModalProps) {
   const { invoke } = useIPC();
-  const setFreeRecipient = useCartStore((s) => s.setFreeRecipient);
-  const setCustomer = useCartStore((s) => s.setCustomer);
 
   const [users, setUsers] = useState<SafeUser[]>([]);
   const [staffTerm, setStaffTerm] = useState("");
@@ -76,18 +73,12 @@ export function FreeRecipientModal({ open, onOpenChange, onPick }: FreeRecipient
   }, [term, invoke]);
 
   function pickStaff(u: SafeUser) {
-    if (onPick) onPick("staff", u.id, u.name);
-    else setFreeRecipient("staff", u.id, u.name);
+    onPick("staff", u.id, u.name);
     onOpenChange(false);
   }
 
   function pickCustomer(c: CustomerDTO) {
-    if (onPick) {
-      onPick("customer", c.id, c.name); // المستدعي بيربط العميل بنفسه
-    } else {
-      setFreeRecipient("customer", c.id, c.name);
-      setCustomer(c.id, c.name); // نربط الفاتورة بالعميل عشان تظهر في بروفايله
-    }
+    onPick("customer", c.id, c.name); // المستدعي بيربط العميل بنفسه
     onOpenChange(false);
   }
 

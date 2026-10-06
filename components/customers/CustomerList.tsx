@@ -29,7 +29,7 @@ export function CustomerList({
       <EmptyState
         icon={Users}
         title="مفيش عملاء"
-        description="ابدأ بإضافة أول عميل، أو سجّل عميل من الطاولات أو البيع السريع."
+        description="ابدأ بإضافة أول عميل، أو سجّل عميل من شاشة الكراسي."
         action={
           <Button onClick={onAdd}>
             <Users className="h-4 w-4" />

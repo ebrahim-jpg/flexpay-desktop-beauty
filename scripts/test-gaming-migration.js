@@ -35,7 +35,7 @@ try {
   const db = getDatabase();
   const LATEST = Math.max(...migrations.map((m) => m.version));
   // «بلايستيشن + كافيه»: 032 الطاولات فوق 031 (اختبارها في test-tables-migration.js)
-  ok(LATEST === 37, `آخر migration = 37 — مجال التجميل (الفعلي ${LATEST})`);
+  ok(LATEST === 38, `آخر migration = 38 — تصحيح الكراسي (الفعلي ${LATEST})`);
   const sessCols = db.prepare("PRAGMA table_info(gaming_sessions)").all().map((c) => c.name);
   ok(sessCols.includes("planned_minutes"), "عمود planned_minutes (المدة المحددة) موجود في الجلسات");
   ok(db.pragma("user_version", { simple: true }) === LATEST, "user_version = آخر migration");

@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home,
-  Package,
   Boxes,
   Users,
   UserCog,
@@ -10,9 +9,8 @@ import {
   Settings,
   RefreshCw,
   CalendarClock,
-  UtensilsCrossed,
-  ShoppingBag,
-  ShoppingCart,
+  Armchair,
+  Scissors,
 } from "lucide-react";
 import type { Permissions } from "@/shared/permissions";
 
@@ -23,36 +21,21 @@ export interface NavItem {
   highlight?: boolean; // شاشة البيع — زر مميز بلون Accent
   // يظهر العنصر لو المستخدم عنده أي صلاحية من دول. مفيش = يظهر للكل.
   requires?: (keyof Permissions)[];
-  badge?: "onlineOrders" | "bookings"; // بادج حيّ (عدّاد الطلبات/الحجوزات الجديدة)
+  badge?: "bookings"; // بادج حيّ (عدّاد الحجوزات الجديدة)
 }
 
-// ⚠️ نسخة «المطاعم»: شاشتين بيع — **الكراسي** (كراسي بحسابات مفتوحة) و**الكاشير**
-// (تيك أواي/توصيل). «طلبات المتجر» ظاهرة لأن الرابط العام منيو + حجز كراسي مع بعض.
+// ⚠️ نسخة «التجميل»: **شاشة بيع واحدة** — الكراسي بجلسات. مفيش كاشير ومفيش
+// «طلبات المتجر»، لأن النسخة دي **خدمات بس** (سياسة الشركة: اللي بيبيع بضاعة
+// بياخد نسخة البيع بالتجزئة). الرابط العام = قائمة خدمات + حجز مواعيد.
 // مفيش غرف ولا تسعير بالوقت.
-// الحراس: scripts/verify-restaurant-shell.js · scripts/verify-restaurant-no-rooms.js
+// الحارس: scripts/verify-beauty-shell.js · scripts/verify-no-retail.js
 export const NAV_ITEMS: NavItem[] = [
   {
     label: "الكراسي",
     href: "/tables",
-    icon: UtensilsCrossed,
+    icon: Armchair,
     highlight: true,
     requires: ["canAccessPOS"],
-  },
-  {
-    // تيك أواي وتوصيل — أسرع من فتح حساب كرسي للزبون اللي واقف على الكاشير
-    label: "الكاشير",
-    href: "/pos",
-    icon: ShoppingBag,
-    highlight: true,
-    requires: ["canAccessPOS"],
-  },
-  {
-    // الطلبات الجايّة من المنيو الأونلاين — البادج بيبان وهو على شاشة البيع
-    label: "طلبات المتجر",
-    href: "/store-orders",
-    icon: ShoppingCart,
-    requires: ["canAccessPOS"],
-    badge: "onlineOrders",
   },
   {
     // الحجز الأونلاين — الطلبات الجايّة من رابط المحل. بعد «الكراسي» على طول عشان
@@ -64,7 +47,7 @@ export const NAV_ITEMS: NavItem[] = [
     badge: "bookings",
   },
   { label: "الرئيسية", href: "/", icon: Home },
-  { label: "المنتجات", href: "/products", icon: Package, requires: ["canViewProducts"] },
+  { label: "الخدمات", href: "/products", icon: Scissors, requires: ["canViewProducts"] },
   {
     label: "المخزون",
     href: "/inventory",

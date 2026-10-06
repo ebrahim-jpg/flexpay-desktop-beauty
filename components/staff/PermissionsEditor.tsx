@@ -28,10 +28,10 @@ export function PermissionsEditor({ value, onChange }: PermissionsEditorProps) {
   return (
     <div className="space-y-1 rounded-lg border border-border p-3">
       <p className="mb-1 text-sm font-medium text-text-primary">
-        صلاحيات موظف الصالة
+        صلاحيات الموظف
       </p>
       <p className="mb-2 text-xs text-text-secondary">
-        دي الصلاحيات الوحيدة القابلة للتخصيص. باقي حاجات النظام (ومنها مبيعات اليوم والتقارير) ممنوعة على موظف الصالة.
+        دي الصلاحيات الوحيدة القابلة للتخصيص. باقي حاجات النظام (ومنها مبيعات اليوم والتقارير) ممنوعة على الموظف.
       </p>
       <div className="space-y-1">
         {CUSTOMIZABLE_PERMISSIONS.map((key) => (

@@ -11,7 +11,6 @@ import {
   CalendarClock,
   Check,
   Copy,
-  Coffee,
   Phone,
   Play,
   UserRound,
@@ -194,7 +193,7 @@ export default function BookingsPage() {
         <LoadingSkeleton rows={4} />
       ) : list.length === 0 ? (
         <EmptyState
-          icon={Coffee}
+          icon={CalendarClock}
           title="مفيش حجوزات"
           description="الحجوزات اللي بتيجي من رابط المحل هتظهر هنا عشان تأكّدها."
         />

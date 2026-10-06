@@ -115,7 +115,6 @@ export interface CreateOrderInput {
    * = مجموع أسعار بنوده بالظبط. أدق، ولأن فلوس الناس بتتحدد بيه — التخمين ممنوع.
    */
   sellers?: { id: number; name: string; amount: number }[];
-  online_order_local_id?: string | null; // ربط بطلب المتجر اللي اتضرب (لتحديث حالته)
   // ===== التوصيل (عرض/فاتورة فقط — مايدخلش أي حساب مالي) =====
   delivery_zone_id?: string | null; // id منطقة التوصيل من الإعدادات
   delivery_person_id?: number | null; // الدليفري (مستخدم بدور delivery)

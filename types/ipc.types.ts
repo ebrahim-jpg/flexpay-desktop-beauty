@@ -1,6 +1,5 @@
 // Types الـ IPC — العقد بين الـ Renderer والـ Main
 import type { Role, Permissions } from "../shared/permissions";
-import type { OnlineOrderDTO, OnlineOrderArchiveDay } from "../shared/online-orders";
 import type {
   SettingsDTO,
   UpdateSettingsInput,
@@ -114,7 +113,6 @@ import type {
   StocktakeListItem,
   StocktakeScopeInput,
 } from "../shared/stocktake";
-import type { UserShortcut } from "../shared/shortcuts";
 
 // النسخة الآمنة من المستخدم (بدون أي hashes) — اللي بتتبعت للـ Renderer
 export interface SafeUser {
@@ -214,9 +212,6 @@ export interface IpcChannels {
 
   // ===== الملف الشخصي (المستخدم الحالي) =====
   "profile:changePassword": { input: { oldPassword: string; newPassword: string }; output: boolean };
-  "profile:getShortcuts": { input: void; output: UserShortcut[] };
-  "profile:setShortcut": { input: { key: string; product_id: number }; output: boolean };
-  "profile:deleteShortcut": { input: string; output: boolean };
 
   // ===== الإعدادات (PRD-02) =====
   "settings:get": { input: void; output: SettingsDTO };
@@ -407,18 +402,6 @@ export interface IpcChannels {
   "stocktake:commit": { input: CommitStocktakeInput; output: StocktakeDTO };
   "stocktake:getAll": { input: void; output: StocktakeListItem[] };
   "stocktake:getById": { input: number; output: StocktakeDTO | null };
-
-  // ===== طلبات المتجر الإلكتروني (0.9.0) =====
-  "onlineOrders:list": { input: void; output: OnlineOrderDTO[] };
-  "onlineOrders:listForDate": { input: string; output: OnlineOrderDTO[] };
-  "onlineOrders:archiveDays": { input: void; output: OnlineOrderArchiveDay[] };
-  "onlineOrders:count": { input: void; output: number };
-  "onlineOrders:get": { input: string; output: OnlineOrderDTO | null };
-  "onlineOrders:cancel": {
-    input: { localId: string; reason?: string | null };
-    output: number;
-  };
-  "onlineOrders:printTicket": { input: string; output: boolean };
 
   // ===== الطاولات (نسخة «كافيه» — أسماء القنوات متوارثة من البلايستيشن) =====
   "gaming:board": { input: void; output: GamingBoard };

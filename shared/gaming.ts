@@ -41,7 +41,7 @@ export interface GamingRoomDTO {
   id: number;
   local_id: string;
   kind: RoomKind;
-  /** منطقة الطاولة (داخلي/خارجي/الدور التاني) */
+  /** منطقة الكرسي (الصالة/غرفة المساج/الدور التاني) */
   area: string | null;
   name: string;
   is_active: boolean;

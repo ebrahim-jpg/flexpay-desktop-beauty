@@ -48,42 +48,12 @@ function can(user: SafeUser, key: keyof SafeUser["permissions"]): boolean {
   return !!effectivePermissions(user.role, user.permissions)[key];
 }
 export function registerOrdersIpc(): void {
-  ipcMain.handle("orders:calculateTotals", (_e, input: CalculateTotalsInput) =>
-    handle(() => ordersRepository.calculateTotals(input))
-  );
-
-  ipcMain.handle("orders:create", (_e, input: CreateOrderInput) =>
-    handle(() => {
-      const user = requireActor();
-
-      // التحقق من صلاحية الخصم
-      const hasDiscount =
-        input.discount_type !== "none" && input.discount_value > 0;
-      if (hasDiscount && !can(user, "canGiveDiscount")) {
-        throw new Error("مالكش صلاحية إعطاء خصم");
-      }
-
-      const result = ordersRepository.create(input, user.id, user.name);
-
-      auditRepository.log({
-        userId: user.id,
-        userName: user.name,
-        action: `${result.order.is_free ? "فاتورة مجانية" : "إنشاء طلب"} ${result.order.receipt_label}`,
-        entityType: "order",
-        entityId: result.order.id,
-        newValue: {
-          total: result.order.total,
-          items_count: result.order.items.length,
-          payment_method: result.order.payment_method,
-          discount_amount: result.order.discount_amount,
-          is_free: result.order.is_free,
-        },
-      });
-
-      return result;
-    })
-  );
-
+  // ⚠️ `orders:create` و`orders:calculateTotals` اتشالوا كـ**قنوات**:
+  //   • `orders:create` كان الكاشير هو الوحيد اللي بينداها، والكاشير اتشال.
+  //     **والدالة `ordersRepository.create` فاضلة** — حساب الجلسة ماشي عليها
+  //     (`gaming.repository.ts → createSessionOrder`).
+  //   • `orders:calculateTotals` ماكانش ليها ولا نداء من الواجهة أصلاً.
+  // قناة مفتوحة بلا مستخدم = باب بيع بضاعة لسه مفتوح من الـrenderer.
   ipcMain.handle("orders:cancel", (_e, input: CancelOrderInput) =>
     handle(() => {
       const user = requireActor();

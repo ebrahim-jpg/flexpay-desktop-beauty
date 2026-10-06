@@ -88,9 +88,7 @@ export async function readProductRows(
       row: n,
       name,
       price: cellNumber(priceRaw),
-      barcode: get(row, index.barcode),
       category: get(row, index.category),
-      saleType: get(row, index.saleType),
       cost: index.cost == null ? null : cellNumber(costRaw),
     });
   });
@@ -134,14 +132,12 @@ export interface ExportProduct {
   name: string;
   price: number;
   cost_price: number;
-  barcode: string | null;
   category_name: string | null;
-  sale_type: "piece" | "weight";
 }
 
 export async function writeProducts(filePath: string, rows: ExportProduct[]): Promise<void> {
   const wb = new ExcelJS.Workbook();
-  const sheet = wb.addWorksheet("المنتجات");
+  const sheet = wb.addWorksheet("الخدمات");
   sheet.columns = PRODUCT_EXPORT_ORDER.map((k) => ({
     header: PRODUCT_EXPORT_LABEL[k],
     key: k,
@@ -152,14 +148,9 @@ export async function writeProducts(filePath: string, rows: ExportProduct[]): Pr
       name: p.name,
       price: p.price,
       cost: p.cost_price,
-      // ⚠️ الباركود نص مش رقم — إكسل بيحوّل الأرقام الطويلة لصيغة علمية
-      // (`6.223E+12`) والملف يرجع يتستورد بباركود مكسور
-      barcode: p.barcode ?? "",
       category: p.category_name ?? "",
-      saleType: saleTypeLabel(p.sale_type),
     });
   }
-  sheet.getColumn("barcode").numFmt = "@";
   styleHeader(sheet);
   await wb.xlsx.writeFile(filePath);
 }
@@ -185,9 +176,11 @@ export async function writeCustomers(filePath: string, rows: ExportCustomer[]): 
 
 /** قالب فاضي بصفّين مثال — من غيره المستخدم بيخمّن أسماء الأعمدة */
 export async function writeProductTemplate(filePath: string): Promise<void> {
+  // ⚠️ كان بيوزّع «بيبسي ٢٫٥ لتر» و«طماطم بالوزن» — قالب منيو مطعم في نسخة
+  // لمحل حلاقة. صاحب المحل بيحمّل القالب، يشوف بيبسي، فيفتكر النسخة مش بتاعته.
   await writeProducts(filePath, [
-    { name: "بيبسي ٢٫٥ لتر", price: 30, cost_price: 24, barcode: "6223000083758", category_name: "مشروبات", sale_type: "piece" },
-    { name: "طماطم", price: 18, cost_price: 12, barcode: null, category_name: "خضار", sale_type: "weight" },
+    { name: "قص شعر", price: 80, cost_price: 0, category_name: "شعر" },
+    { name: "صبغة", price: 300, cost_price: 0, category_name: "شعر" },
   ]);
 }
 

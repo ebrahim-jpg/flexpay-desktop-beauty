@@ -36,6 +36,7 @@ import { migration_034 } from "./034_restaurant_vertical";
 import { migration_035 } from "./035_product_sizes";
 import { migration_036 } from "./036_kitchen_batches";
 import { migration_037 } from "./037_beauty_vertical";
+import { migration_038 } from "./038_beauty_chairs_backfill";
 
 interface Migration {
   version: number;
@@ -82,6 +83,7 @@ export const migrations: Migration[] = [
   migration_035,
   migration_036,
   migration_037,
+  migration_038,
 ];
 
 // يشغّل كل الـ migrations الناقصة بالترتيب باستخدام PRAGMA user_version

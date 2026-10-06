@@ -2,7 +2,6 @@ import type Database from "better-sqlite3";
 import { Notification } from "electron";
 import { getMainWindow } from "../main-window";
 import { SyncHttpClient } from "./http-client";
-import { onlineOrdersRepository } from "../repositories/online-orders.repository";
 import { roomBookingsRepository } from "../repositories/room-bookings.repository";
 import { settingsRepository } from "../repositories/settings.repository";
 import {
@@ -151,11 +150,11 @@ export class SyncEngine {
     if (!cfg) return;
     // الدفع (صادر) — متجوّز بـ busy لوحده
     if (!this.busy) await this.syncBatch(cfg);
-    // السحب (وارد: طلبات المتجر) — بفاصل متكيّف مش كل تِك.
-    // بس لو فيه حاجة **جاهزة تترفع** بنسحب فوراً مهما كان الفاصل، عشان الزبون
-    // يشوف حالة طلبه من غير تأخير.
+    // السحب (وارد: **الحجوزات**) — بفاصل متكيّف مش كل تِك.
+    // بس لو فيه قرار **جاهز يترفع** بنسحب فوراً مهما كان الفاصل، عشان الزبون
+    // يعرف حجزه اتأكّد من غير تأخير.
     if (this.dueForPull() || this.hasPendingUplink()) {
-      await this.pullOnlineOrders(cfg);
+      await this.pullBookings(cfg);
     }
   }
 
@@ -163,47 +162,39 @@ export class SyncEngine {
     return Date.now() - this.lastPullAt >= this.pullIntervalMs;
   }
 
-  /** فيه تأكيدات استلام/تجهيز/إلغاء مستنية ترفع؟ */
+  /** فيه تأكيد استلام أو قرار حجز مستني يرفع؟ */
   private hasPendingUplink(): boolean {
+    // قرار الموظف على حجز (قبول/رفض/تحويل) لازم يوصل الويب في أقرب سحب
     return (
-      onlineOrdersRepository.pendingAckIds().length > 0 ||
-      onlineOrdersRepository.pendingCompletions().length > 0 ||
-      onlineOrdersRepository.pendingCancellations().length > 0 ||
-      // قرار الموظف على حجز (قبول/رفض/تحويل) لازم يوصل الويب في أقرب سحب
       roomBookingsRepository.pendingAckIds().length > 0 ||
       roomBookingsRepository.pendingDecisions().length > 0
     );
   }
 
-  /** رجّع السحب لأسرع فاصل — بيتنده مع أي نشاط حقيقي (فتح شاشة الطلبات مثلاً). */
+  /** رجّع السحب لأسرع فاصل — بيتنده مع أي نشاط حقيقي (فتح شاشة الحجز مثلاً). */
   resumeFastPull(): void {
     this.emptyPulls = 0;
     this.pullIntervalMs = SYNC_INTERVAL_MS;
     this.lastPullAt = 0; // اسحب في أقرب تِك
   }
 
-  // سحب طلبات المتجر من الويب + تبليغ الاستلام والضرب. الفشل مايأثرش على الدفع.
-  private async pullOnlineOrders(cfg: SyncConfig): Promise<void> {
+  // 🔴 سحب **الحجوزات** من الويب + رفع قرارات الموظف. الفشل مايأثرش على الدفع.
+  //
+  // ⚠️ القناة دي كانت اسمها `pullOnlineOrders` وكانت بتعمل الحاجتين مع بعض —
+  // طلبات المتجر **والحجز** على نفس الـendpoint (`/api/sync/pull`) وبنفس الجسم
+  // والرد (SYNC-CONTRACT §45-76). فشيل طلبات المتجر بالطريقة الساذجة (مسح
+  // الدالة) كان **هيقتل الحجز معاه**. اللي حصل: السحب فضل، ونص الطلبات بس اتشال.
+  private async pullBookings(cfg: SyncConfig): Promise<void> {
     if (this.pulling) return;
     this.pulling = true;
     try {
-      const ack = onlineOrdersRepository.pendingAckIds();
-      const completed = onlineOrdersRepository.pendingCompletions();
-      const cancelled = onlineOrdersRepository.pendingCancellations();
       const bookingAck = roomBookingsRepository.pendingAckIds();
       const bookingDecisions = roomBookingsRepository.pendingDecisions();
-      const { orders, nextPollMs, bookings, bookingsSupported, bookingSettings } =
+      const { nextPollMs, bookings, bookingsSupported, bookingSettings } =
         await new SyncHttpClient(cfg).pullOrders({
-          ack,
-          completed: completed.map((c) => ({
-            local_id: c.local_id,
-            desktop_order_id: c.desktop_order_id,
-          })),
-          cancelled,
           bookingAck,
           bookingDecisions,
         });
-      const inserted = onlineOrdersRepository.upsertPulled(orders);
       const newBookings = roomBookingsRepository.upsertPulled(bookings);
       // ⚠️ مانعلّمش أي حجز «اترفع» غير لما السيرفر يقول إنه فاهم الحجز أصلاً:
       // ويب قديم بيتجاهل المفاتيح بصمت، وكنا هنعتبر القرار وصل وهو ضاع للأبد.
@@ -218,23 +209,11 @@ export class SyncEngine {
         }
       }
       if (newBookings > 0) this.onNewBookings(newBookings);
-      if (ack.length) onlineOrdersRepository.markAcked(ack);
-      if (completed.length)
-        onlineOrdersRepository.markCompletionSynced(completed.map((c) => c.local_id));
-      if (cancelled.length)
-        onlineOrdersRepository.markCancelSynced(cancelled.map((c) => c.local_id));
-      if (inserted > 0) this.onNewOnlineOrders(inserted);
       this.lastSuccessfulSyncAt = Date.now();
 
       // ===== ضبط الفاصل الجاي =====
       const hadWork =
-        orders.length > 0 ||
-        ack.length > 0 ||
-        completed.length > 0 ||
-        cancelled.length > 0 ||
-        bookings.length > 0 ||
-        bookingAck.length > 0 ||
-        bookingDecisions.length > 0;
+        bookings.length > 0 || bookingAck.length > 0 || bookingDecisions.length > 0;
       if (hadWork) {
         // نشاط حقيقي → فضل سريع
         this.emptyPulls = 0;
@@ -258,28 +237,6 @@ export class SyncEngine {
       // بيتسجّل حتى مع الفشل: من غيره سيرفر بيرجّع خطأ كان هيتضرب كل تِك
       this.lastPullAt = Date.now();
       this.pulling = false;
-    }
-  }
-
-  // إشعار + صوت + حدث للواجهة لما يوصل طلب متجر جديد
-  private onNewOnlineOrders(count: number): void {
-    const total = onlineOrdersRepository.newCount();
-    const win = getMainWindow();
-    if (win && !win.isDestroyed()) {
-      win.webContents.send("online-orders:new", { count, total });
-    }
-    try {
-      if (Notification.isSupported()) {
-        new Notification({
-          title: "🛒 طلب جديد من المتجر",
-          body:
-            count === 1
-              ? "وصل طلب جديد محتاج تجهيز"
-              : `وصل ${count} طلبات جديدة محتاجة تجهيز`,
-        }).show();
-      }
-    } catch {
-      /* الإشعار مش متاح — نتجاهل */
     }
   }
 
@@ -366,7 +323,7 @@ export class SyncEngine {
     const cfg = this.readConfig();
     if (cfg && this.online && !this.busy) {
       await this.syncBatch(cfg);
-      await this.pullOnlineOrders(cfg);
+      await this.pullBookings(cfg);
     }
     return this.buildStatus();
   }

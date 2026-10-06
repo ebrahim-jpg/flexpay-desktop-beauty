@@ -1,6 +1,6 @@
 "use client";
 
-import { Package } from "lucide-react";
+import { Scissors } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ProductCard } from "./ProductCard";
 import type { ProductDTO } from "@/shared/products";
@@ -28,9 +28,9 @@ export function ProductGrid({
   if (products.length === 0) {
     return (
       <EmptyState
-        icon={Package}
-        title="مفيش منتجات هنا"
-        description="ابدأ بإضافة أول منتج في الفئة دي."
+        icon={Scissors}
+        title="مفيش خدمات هنا"
+        description="ابدأ بإضافة أول خدمة في الفئة دي."
       />
     );
   }

@@ -82,18 +82,13 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
       discount_value: 0,
     });
     ok(checkout.ok && checkout.data.order.total > 0, `موظف الصالة حاسب الجلسة (${checkout.ok ? checkout.data.order.total : checkout.error})`);
-    const quick = await call("orders:create", {
-      items: [{ product_id: productId, quantity: 2, modifier_option_ids: [] }],
-      is_guest: true,
-      order_type: "counter",
-      discount_type: "none",
-      discount_value: 0,
-      payment_method: "cash",
-      amount_paid: 100,
-      source: "pos",
-    });
-    ok(quick.ok, `موظف الصالة عمل بيع سريع (${quick.ok ? "" : quick.error})`);
-    const byId = await call("orders:getById", quick.ok ? quick.data.order.id : 0);
+    // ⚠️ البيع السريع بالمنتجات اتشال — النسخة خدمات بس. وقناة `orders:create`
+    // مالهاش وجود أصلاً — الفاتورة بتتعمل من حساب الجلسة بس.
+    for (const dead of ["orders:create", "orders:calculateTotals"]) {
+      ok(!handlers.has(dead), `قناة ${dead} **مش متسجّلة**${handlers.has(dead) ? " — رجعت!" : ""}`);
+    }
+    const sessionOrderId = checkout.ok ? checkout.data.order.id : 0;
+    const byId = await call("orders:getById", sessionOrderId);
     ok(byId.ok && byId.data, "موظف الصالة يقدر يفتح فاتورة بعينها (سجل مشتريات العميل)");
 
     // ===== ② موظف الصالة مايشوفش فلوس اليوم =====
@@ -125,11 +120,11 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), "flexpay-gaming-perm-"));
     console.log("\n— المدير بيشوف الأرقام —");
     setCurrentActor(managerId);
     const mgrSummary = await call("dashboard:getTodaySummary");
-    ok(mgrSummary.ok && mgrSummary.data.todaySales > 0 && mgrSummary.data.todayOrders === 2, `المدير شايف مبيعات اليوم (${mgrSummary.ok ? mgrSummary.data.todaySales : mgrSummary.error})`);
+    ok(mgrSummary.ok && mgrSummary.data.todaySales > 0 && mgrSummary.data.todayOrders === 1, `المدير شايف مبيعات اليوم (${mgrSummary.ok ? mgrSummary.data.todaySales : mgrSummary.error})`);
     const mgrOrders = await call("orders:getByDate", { businessDate: todayKey });
-    ok(mgrOrders.ok && mgrOrders.data.length === 2, "المدير شايف فواتير اليوم");
+    ok(mgrOrders.ok && mgrOrders.data.length === 1, "المدير شايف فواتير اليوم");
     const mgrReport = await call("reports:getSalesByDay", todayKey);
-    ok(mgrReport.ok && mgrReport.data.totalOrders === 2, "المدير شايف تقرير المبيعات");
+    ok(mgrReport.ok && mgrReport.data.totalOrders === 1, "المدير شايف تقرير المبيعات");
 
     // ===== ④ البائعين · الأدوار · الوزن =====
     console.log("\n— الأدوار والمنتجات —");

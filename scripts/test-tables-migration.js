@@ -35,7 +35,7 @@ try {
   initDatabase(freshDir);
   const db = getDatabase();
   const LATEST = Math.max(...migrations.map((m) => m.version));
-  ok(LATEST === 37, `آخر migration = 37 — مجال التجميل (الفعلي ${LATEST})`);
+  ok(LATEST === 38, `آخر migration = 38 — تصحيح الكراسي (الفعلي ${LATEST})`);
   ok(cols(db, "gaming_rooms").includes("kind") && cols(db, "gaming_rooms").includes("area"), "gaming_rooms: kind + area");
   ok(
     cols(db, "gaming_sessions").includes("kind") && cols(db, "gaming_sessions").includes("merged_into_id"),
@@ -110,9 +110,12 @@ try {
     const same = Object.keys(before[k]).every((c) => before[k][c] === after[k][c]);
     ok(same, `${k}: كل الأعمدة القديمة زي ما هي حرفياً`);
   }
-  ok(after.room.kind === "room" && after.room.area === null, "الغرفة القديمة بقت kind=room من غير منطقة");
-  ok(after.session.kind === "room" && after.session.merged_into_id === null, "الجلسة القديمة بقت kind=room");
-  ok(after.booking.kind === "room" && after.booking.party_size === null, "الحجز القديم بقى kind=room");
+  // 🔴 الفحص ده **انقلب** مع migration 038. قبلها كان `kind` بيفضل `'room'`
+  // (الافتراضي بتاع 032 ومفيش backfill) — ونسخة التجميل بتقرا `WHERE kind='table'`
+  // بس، فقاعدة مترقّية كانت بتطلع **صفر كراسي على الشاشة بلا أي رسالة**.
+  ok(after.room.kind === "table" && after.room.area === null, "**الغرفة القديمة بقت كرسي** (migration 038)");
+  ok(after.session.kind === "table" && after.session.merged_into_id === null, "والجلسة القديمة بقت كرسي");
+  ok(after.booking.kind === "table" && after.booking.party_size === null, "والحجز القديم بقى على كرسي");
   ok(after.order.session_id === null, "الفاتورة القديمة من غير session_id");
   ok(db1.prepare("SELECT vertical FROM settings WHERE id=1").get().vertical === "beauty", "الصف الموجود اتختم beauty");
   db1.close();

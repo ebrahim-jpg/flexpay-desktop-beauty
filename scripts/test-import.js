@@ -2,7 +2,7 @@
 // تشغيل: node scripts/run-electron.js scripts/test-import.js
 //
 // ⚠️ الميزة دي فيها فخّين بيفشلوا **بصمت**، ودول أهم فحصين في الملف:
-//   ① الباركود المدمج لازم يتخزّن ٧ أرقام — وإلا الكاشير يمسح ومايلاقيش
+//   ① `barcodeForStorage` لسه دالة سليمة (الباركود برّه استيراد الخدمات)
 //   ② كل صف مستورد لازم يضيف حدث في `sync_queue` — وإلا مايظهرش على الويب أبداً
 // الاتنين مايظهروش في typecheck ولا في البناء ولا حتى على الشاشة.
 
@@ -59,8 +59,10 @@ eq(dt.cellNumber(""), null, "خانة فاضية = null (مش صفر)");
 ok(Number.isNaN(dt.cellNumber("كلام")), "نص مش رقم = NaN (عشان نفرّقه عن الفاضي)");
 eq(dt.cellNumber("١٢٥٫٥".replace("٫", ".")), 125.5, "رقم عربي بكسور");
 
-// ===== ① الفخ الأول: الباركود المدمج =====
-console.log("\n— الباركود المدمج (فخ الكاشير) —");
+// ===== ① الباركود: الدالة النقية لسه سليمة =====
+// ⚠️ **الاستيراد في نسخة الخدمات مابيقراش باركود خالص** (الخدمة مالهاش باركود)،
+// بس الدالة فاضلة في `shared/barcode.ts` فبنتأكد إنها مااتكسرتش.
+console.log("\n— الباركود: الدالة النقية —");
 {
   // EAN-13 بيبدأ 21 = وزن؛ التخزين المفروض يبقى أول ٧ أرقام بس
   const embedded = "2112345067890";
@@ -75,24 +77,21 @@ console.log("\n— الباركود المدمج (فخ الكاشير) —");
 console.log("\n— مطابقة الصفوف —");
 {
   const cat = categoriesRepository.create({ name: "مشروبات" }, null);
-  const p1 = productsRepository.create(
-    { name: "بيبسي", category_id: cat.id, price: 15, barcode: "12345" },
-    null
-  );
+  const p1 = productsRepository.create({ name: "قص", category_id: cat.id, price: 15 }, null);
   const p2 = productsRepository.create({ name: "كيلو", category_id: cat.id, price: 30 }, null);
   const cat2 = categoriesRepository.create({ name: "فاكهة" }, null);
   productsRepository.create({ name: "كيلو", category_id: cat2.id, price: 50 }, null);
 
   const plan = importer.planProducts([
-    { row: 2, name: "بيبسي", price: 20, barcode: "12345", category: "مشروبات", saleType: "", cost: null },
-    { row: 3, name: "كيلو", price: 35, barcode: "", category: "مشروبات", saleType: "كيلو", cost: null },
-    { row: 4, name: "كيلو", price: 55, barcode: "", category: "فاكهة", saleType: "كيلو", cost: null },
-    { row: 5, name: "شيبسي", price: 10, barcode: "", category: "سناكس", saleType: "", cost: null },
+    { row: 2, name: "قص", price: 20, category: "مشروبات", cost: null },
+    { row: 3, name: "كيلو", price: 35, category: "مشروبات", cost: null },
+    { row: 4, name: "كيلو", price: 55, category: "فاكهة", cost: null },
+    { row: 5, name: "شيبسي", price: 10, category: "سناكس", cost: null },
   ], []);
 
   eq(plan.counts, { create: 1, update: 3, skip: 0, error: 0 }, "٣ تحديث + ١ جديد");
   eq(plan.newCategories, ["سناكس"], "فئة واحدة جديدة بس");
-  eq(plan.rows[0].targetId, p1.id, "الباركود بيطابق المنتج الصح");
+  eq(plan.rows[0].targetId, p1.id, "الاسم+الفئة بيطابق البند الصح (مفيش باركود)");
   eq(plan.rows[1].targetId, p2.id, "الاسم+الفئة بيطابق «كيلو» بتاعة المشروبات");
   ok(
     plan.rows[2].targetId !== p2.id,
@@ -101,9 +100,7 @@ console.log("\n— مطابقة الصفوف —");
   ok(plan.rows[0].changes && plan.rows[0].changes["السعر"], "المعاينة بتوري تغيير السعر");
 
   // إعادة استيراد نفس الملف بلا تغيير
-  const same = importer.planProducts([
-    { row: 2, name: "بيبسي", price: 15, barcode: "12345", category: "مشروبات", saleType: "", cost: null },
-  ], []);
+  const same = importer.planProducts([{ row: 2, name: "قص", price: 15, category: "مشروبات", cost: null }], []);
   eq(same.counts.create, 0, "إعادة الاستيراد مابتكرّرش");
   eq(same.rows[0].action, "skip", "صف بلا تغيير = تخطّي مش تحديث");
 }
@@ -114,8 +111,8 @@ console.log("\n— أحداث المزامنة (فخ الويب) —");
   const before = pendingCount();
   const res = importer.applyProducts(
     [
-      { row: 2, name: "منتج مزامنة ١", price: 10, barcode: "", category: "قسم جديد", saleType: "", cost: 6 },
-      { row: 3, name: "منتج مزامنة ٢", price: 20, barcode: "999888", category: "قسم جديد", saleType: "كيلو", cost: null },
+      { row: 2, name: "خدمة مزامنة ١", price: 10, category: "قسم جديد", cost: 6 },
+      { row: 3, name: "خدمة مزامنة ٢", price: 20, category: "قسم جديد", cost: null },
     ],
     null
   );
@@ -137,12 +134,15 @@ console.log("\n— أحداث المزامنة (فخ الويب) —");
     "الفئة الجديدة كمان اتضافت للطابور"
   );
 
-  // الباركود اتخزّن مطبّع
-  const found = productsRepository.getByBarcode("999888");
-  ok(found && found.name === "منتج مزامنة ٢", "المنتج بيتلاقى بالباركود بعد الاستيراد");
+  // ⚠️ **كل سطر مستورد بيدخل خدمة** — ده كان أخطر باب: الاستيراد ماكانش بيبعت
+  // `is_service` خالص، فملف إكسل كان بيدخل بضاعة في نسخة خدمات بس.
+  const imported = productsRepository.getAll().filter((x) => x.name.startsWith("خدمة مزامنة"));
+  eq(imported.length, 2, "الخدمتين اتضافوا");
+  ok(imported.every((x) => x.is_service === true), "و**كلهم خدمات** (مفيش بضاعة من الاستيراد)");
+  ok(imported.every((x) => !x.barcode), "ومفيش باركود على أي واحدة");
   // التكلفة اتسجّلت
   const all = productsRepository.getAll();
-  const withCost = all.find((p) => p.name === "منتج مزامنة ١");
+  const withCost = all.find((p) => p.name === "خدمة مزامنة ١");
   eq(withCost.cost_price, 6, "التكلفة من الإكسل اتسجّلت (مش صفر)");
 }
 
@@ -150,7 +150,7 @@ console.log("\n— التحديث الجزئي: الفاضي مايمسحش —"
 {
   const cat = categoriesRepository.create({ name: "جزئي" }, null);
   const p = productsRepository.create(
-    { name: "منتج جزئي", category_id: cat.id, price: 100, barcode: "777666" },
+    { name: "خدمة جزئية", category_id: cat.id, price: 100, barcode: "777666" },
     null
   );
   // ⚠️ التكلفة ليها دالة مستقلة — `update()` مافيهوش `cost_price` خالص،
@@ -159,13 +159,13 @@ console.log("\n— التحديث الجزئي: الفاضي مايمسحش —"
 
   // ملف فيه السعر بس — التكلفة والباركود فاضيين
   importer.applyProducts(
-    [{ row: 2, name: "منتج جزئي", price: 120, barcode: "", category: "جزئي", saleType: "", cost: null }],
+    [{ row: 2, name: "خدمة جزئية", price: 120, category: "جزئي", cost: null }],
     null
   );
   const after = productsRepository.getAll().find((x) => x.id === p.id);
   eq(after.price, 120, "السعر اتحدّث");
   eq(after.cost_price, 40, "⚠️ التكلفة الفاضية في الملف **مامسحتش** القيمة الموجودة");
-  eq(after.barcode, "777666", "⚠️ الباركود الفاضي في الملف **مامسحش** الباركود الموجود");
+  eq(after.barcode, "777666", "⚠️ الاستيراد **مابيلمسش** الباركود القديم خالص (برّه ملف الخدمات)");
   ok(after.local_id === p.local_id, "local_id مااتغيّرش (وإلا الويب هيعمل نسخة تانية)");
 }
 

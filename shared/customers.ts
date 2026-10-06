@@ -81,7 +81,7 @@ export interface CustomerOrderRow {
   total: number;
   payment_method: string;
   status: string;
-  items_summary: string; // "قهوة × 1، شاي × 2"
+  items_summary: string; // "قص × 1، صبغة × 1"
 }
 
 export interface CustomerOrdersPage {

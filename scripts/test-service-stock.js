@@ -75,11 +75,10 @@ try {
   ok(dye.is_service === true, "الصنف اتحفظ كخدمة");
   ok(dye.duration_minutes === 90, `ومدتها ٩٠ دقيقة (الفعلي ${dye.duration_minutes})`);
 
-  const shampoo = productsRepository.create(
-    { name: "شامبو", category_id: cat, price: 120 },
-    actorId
-  );
-  ok(shampoo.is_service === false, "والمنتج العادي مش خدمة (الافتراضي)");
+  // ⚠️ الفحص ده **انقلب**: النسخة بقت **خدمات بس**، فالافتراضي هو الخدمة.
+  // اللي بيبيع شامبو وبضاعة بياخد نسخة البيع بالتجزئة (سياسة الشركة).
+  const plain = productsRepository.create({ name: "تنظيف بشرة", category_id: cat, price: 120 }, actorId);
+  ok(plain.is_service === true, "وأي بند جديد بيدخل **خدمة** تلقائي (مفيش بضاعة)");
 
   // ===== ② وصفة الخدمة بتخصم =====
   console.log("\n— الخدمة بتستهلك مواد —");

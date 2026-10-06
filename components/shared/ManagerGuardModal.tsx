@@ -46,11 +46,11 @@ export function ManagerGuardModal() {
         <div className="space-y-3 text-sm">
           <p className="text-text-primary">
             أنت داخل بحساب <b>«{user?.name}»</b> ({user ? ROLE_LABELS[user.role] : "—"}). العملية
-            دي هتتسجّل على الحساب ده — <b>مش على حساب موظف الصالة</b>.
+            دي هتتسجّل على الحساب ده — <b>مش على حساب الموظف</b>.
           </p>
           <p className="text-text-secondary">
             المدير/المالك نادرًا يستلم وردية صالة. لو نسيت تبدّل الحساب، اضغط إلغاء وسجّل دخول
-            بحساب موظف الصالة.
+            بحساب الموظف.
           </p>
           <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface-secondary p-3">
             <Switch checked={dontWarn} onCheckedChange={setDontWarn} />

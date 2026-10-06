@@ -12,7 +12,6 @@ import { getDatabase } from "../../database/connection";
 import { productsRepository } from "../../repositories/products.repository";
 import { categoriesRepository } from "../../repositories/categories.repository";
 import { customersRepository } from "../../repositories/customers.repository";
-import { barcodeForStorage } from "../../../shared/barcode";
 import {
   nameKey,
   saleTypeLabel,
@@ -46,9 +45,8 @@ export function planProducts(rows: ProductRow[], unknownHeaders: string[]): Prod
   const catByName = new Map(cats.map((c) => [nameKey(c.name), c]));
   const products = productsRepository.getAll();
 
-  const byBarcode = new Map<string, (typeof products)[number]>();
-  for (const p of products) if (p.barcode) byBarcode.set(p.barcode, p);
-
+  // ⚠️ المطابقة بالاسم والفئة بس — **مفيش باركود في نسخة الخدمات** (الخدمة
+  // مالهاش باركود). قبل كده كان الباركود هو المفتاح الأول للمطابقة.
   const byNameCat = new Map<string, (typeof products)[number]>();
   for (const p of products) {
     byNameCat.set(`${nameKey(p.name)}|${p.category_id ?? ""}`, p);
@@ -87,8 +85,6 @@ export function planProducts(rows: ProductRow[], unknownHeaders: string[]): Prod
       continue;
     }
 
-    // ⚠️ الباركود بيتطبّع **قبل** المطابقة — المدمج بيتخزّن ٧ أرقام بس
-    const barcode = r.barcode ? barcodeForStorage(r.barcode) : "";
     const catName = r.category.trim();
     const cat = catName ? catByName.get(nameKey(catName)) : undefined;
     const catId = cat?.id ?? null;
@@ -98,9 +94,7 @@ export function planProducts(rows: ProductRow[], unknownHeaders: string[]): Prod
       newCategories.push(catName);
     }
 
-    const target =
-      (barcode ? byBarcode.get(barcode) : undefined) ??
-      byNameCat.get(`${nameKey(name)}|${catId ?? ""}`);
+    const target = byNameCat.get(`${nameKey(name)}|${catId ?? ""}`);
 
     if (!target) {
       out.push({ row: r.row, action: "create", name });
@@ -116,17 +110,8 @@ export function planProducts(rows: ProductRow[], unknownHeaders: string[]): Prod
     if (r.cost != null && Math.abs(target.cost_price - r.cost) > 0.0001) {
       changes["التكلفة"] = [fmt(target.cost_price), fmt(r.cost)];
     }
-    if (barcode && (target.barcode ?? "") !== barcode) {
-      changes["الباركود"] = [target.barcode ?? "—", barcode];
-    }
-    // ⚠️ الباركود طابق بس الاسم مختلف — إعادة تسمية مقصودة أو غلطة في الملف،
-    // والفرق مايتعرفش غير من صاحب المحل. لازم يبان في المعاينة.
     if (nameKey(target.name) !== nameKey(name)) {
       changes["الاسم"] = [target.name, name];
-    }
-    const st = r.saleType ? parseSaleTypeSafe(r.saleType) : null;
-    if (st && target.sale_type !== st) {
-      changes["النوع"] = [saleTypeLabel(target.sale_type), saleTypeLabel(st)];
     }
 
     if (Object.keys(changes).length === 0) {
@@ -185,7 +170,6 @@ export function applyProducts(rows: ProductRow[], actorId: number | null): Impor
       }
 
       const catId = r.category.trim() ? catByName.get(nameKey(r.category)) ?? null : null;
-      const saleType = r.saleType ? parseSaleTypeSafe(r.saleType) : undefined;
 
       if (p.action === "create") {
         const made = productsRepository.create(
@@ -193,8 +177,13 @@ export function applyProducts(rows: ProductRow[], actorId: number | null): Impor
             name: r.name.trim(),
             category_id: catId,
             price: r.price!,
-            barcode: r.barcode || null,
-            sale_type: saleType ?? "piece",
+            // 🔴 **خدمة** — ده كان أخطر باب: الاستيراد ماكانش بيبعت `is_service`
+            // خالص، فكل سطر من إكسل كان بيدخل **منتج بضاعة** في نسخة خدمات بس.
+            // (والريبو بيثبّتها كمان — حزام وحمّالة.)
+            is_service: true,
+            // ومفيش باركود ولا بيع بالوزن: خدمة مالهاش باركود، والكيلو للخامات
+            // في المخزون مش للبيع.
+            sale_type: "piece",
           },
           actorId
         );
@@ -212,9 +201,7 @@ export function applyProducts(rows: ProductRow[], actorId: number | null): Impor
             id: p.targetId!,
             name: r.name.trim(),
             price: r.price!,
-            ...(r.barcode ? { barcode: r.barcode } : {}),
             ...(catId != null ? { category_id: catId } : {}),
-            ...(saleType ? { sale_type: saleType } : {}),
           },
           actorId
         );

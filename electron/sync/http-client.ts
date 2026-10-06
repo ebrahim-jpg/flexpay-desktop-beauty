@@ -1,5 +1,4 @@
 import { net } from "electron";
-import type { PulledOnlineOrder } from "../../shared/online-orders";
 import type {
   BookingDecisionOut,
   PulledBooking,
@@ -75,18 +74,19 @@ export class SyncHttpClient {
     });
   }
 
-  // سحب طلبات المتجر الجديدة + تبليغ الاستلام/الضرب (القناة ويب→ديسكتوب)
+  // سحب الحجوزات الجديدة + رفع قرارات الموظف (القناة ويب→ديسكتوب)
+  //
+  // ⚠️ الـendpoint اسمه `/api/sync/pull` وكان بيجيب **طلبات المتجر والحجز مع
+  // بعض** في نفس الجسم والرد (SYNC-CONTRACT §45-76). نسخة التجميل مالهاش متجر
+  // بضاعة، فمفاتيح الطلبات اتشالت من الطلب **والـendpoint زي ما هو** —
+  // الاسم فاضل `pullOrders` لأنه اسم المسار على السيرفر مش اسم المحتوى.
+  // والويب بيتجاهل المفاتيح الناقصة (كلها اختيارية عنده) فمفيش كسر توافق.
   async pullOrders(body: {
-    ack: string[];
-    completed: { local_id: string; desktop_order_id: number }[];
-    cancelled: { local_id: string; reason: string | null }[];
-    // ===== حجوزات الغرف — مفاتيح اختيارية (سيرفر قديم بيتجاهلها) =====
     bookingAck?: string[];
     bookingDecisions?: BookingDecisionOut[];
-    // nextPollMs اختياري في الرد: السيرفر بيقول نسأل تاني إمتى (متجر مقفول →
+    // nextPollMs اختياري في الرد: السيرفر بيقول نسأل تاني إمتى (الحجز مقفول →
     // فاصل طويل). سيرفر قديم مش هيبعته والديسكتوب بيتراجع محلياً.
   }): Promise<{
-    orders: PulledOnlineOrder[];
     nextPollMs?: number;
     bookings: PulledBooking[];
     /**
@@ -124,14 +124,12 @@ export class SyncHttpClient {
           }
           try {
             const json = JSON.parse(data) as {
-              orders?: PulledOnlineOrder[];
               nextPollMs?: number;
               bookings?: PulledBooking[];
               bookingsSupported?: boolean;
               bookingSettings?: { enabled?: boolean; alertBeforeMinutes?: number };
             };
             resolve({
-              orders: json.orders ?? [],
               nextPollMs: json.nextPollMs,
               bookings: json.bookings ?? [],
               bookingsSupported: json.bookingsSupported === true,

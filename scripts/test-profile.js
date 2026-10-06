@@ -42,31 +42,16 @@ try {
   ok(!!usersRepository.verifyPassword("ahmed", "5678"), "كلمة السر الجديدة شغّالة");
   ok(!usersRepository.verifyPassword("ahmed", "1234"), "كلمة السر القديمة بطّلت تشتغل");
 
-  // ===== الاختصارات =====
-  usersRepository.setShortcut(u.id, "m", pid);
-  let list = usersRepository.getShortcuts(u.id);
-  ok(list.length === 1 && list[0].key === "m" && list[0].product_id === pid, "اتربط m بقهوة شرقي");
-  ok(list[0].product_name === "قهوة شرقي", "اسم المنتج اتحفظ لقطة");
-
-  // upsert: نفس الزر لمنتج تاني
-  usersRepository.setShortcut(u.id, "m", pid2);
-  list = usersRepository.getShortcuts(u.id);
-  ok(list.length === 1 && list[0].product_id === pid2, "نفس الزر اتحدّث للمنتج الجديد (مش مكرّر)");
-
-  // حرف كابيتال يتطبّع lowercase
-  usersRepository.setShortcut(u.id, "T", pid);
-  ok(usersRepository.getShortcuts(u.id).some((s) => s.key === "t"), "الكابيتال اتطبّع لـ t");
-
-  // ===== رفض المحجوزة/غير الصالحة =====
-  throws(() => usersRepository.setShortcut(u.id, " ", pid), "مسافة → مرفوضة");
-  throws(() => usersRepository.setShortcut(u.id, "Enter", pid), "Enter → مرفوض");
-  throws(() => usersRepository.setShortcut(u.id, "mm", pid), "حرفين → مرفوض");
-  throws(() => usersRepository.setShortcut(u.id, "@", pid), "رمز → مرفوض");
-  throws(() => usersRepository.setShortcut(u.id, "m", 99999), "منتج مش موجود → مرفوض");
-
-  // حذف
-  usersRepository.deleteShortcut(u.id, "m");
-  ok(!usersRepository.getShortcuts(u.id).some((s) => s.key === "m"), "الحذف شغّال");
+  // ===== مفيش اختصارات كاشير =====
+  // ⚠️ «زر كيبورد = منتج» اتشال مع شاشة الكاشير. **الجدول `user_shortcuts`
+  // فاضل في الداتابيز** (ممنوع تعديل migration اتطبّق) ومحدش بيكتب فيه.
+  for (const gone of ["getShortcuts", "setShortcut", "deleteShortcut"]) {
+    ok(typeof usersRepository[gone] !== "function", `الريبو مافيهوش ${gone}`);
+  }
+  ok(
+    !!getDatabase().prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='user_shortcuts'").get(),
+    "والجدول فاضل في الداتابيز زي ما هو"
+  );
 
   console.log(process.exitCode ? "\n❌ فيه فشل" : "\n✅ الملف الشخصي: كلمة السر + الاختصارات سليمة");
   process.exit(process.exitCode ?? 0);

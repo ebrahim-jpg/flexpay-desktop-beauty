@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import {
-  Coffee,
+  Scissors,
   Moon,
   Sun,
   LogOut,
@@ -15,7 +15,6 @@ import {
 import { NAV_ITEMS } from "./nav-items";
 import { useAuthStore } from "@/store/auth.store";
 import { useSettingsStore } from "@/store/settings.store";
-import { useOnlineOrdersStore } from "@/store/online-orders.store";
 import { useBookingsStore } from "@/store/bookings.store";
 import { ROLE_LABELS } from "@/shared/permissions";
 import { cn } from "@/lib/utils";
@@ -28,7 +27,6 @@ export function AppSidebar() {
   const logout = useAuthStore((s) => s.logout);
   const shopName = useSettingsStore((s) => s.shopName);
   const shopLogo = useSettingsStore((s) => s.shopLogo);
-  const newOrdersCount = useOnlineOrdersStore((s) => s.newCount);
   const newBookingsCount = useBookingsStore((s) => s.newCount);
 
   // يظهر العنصر لو مفيش متطلبات، أو المستخدم عنده أي صلاحية من المطلوبة
@@ -61,7 +59,7 @@ export function AppSidebar() {
           </div>
         ) : (
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sidebar-accent to-primary text-white shadow-gold">
-            <Coffee className="h-5 w-5" />
+            <Scissors className="h-5 w-5" />
           </div>
         )}
         {!collapsed && (
@@ -113,13 +111,8 @@ export function AppSidebar() {
               />
               {!collapsed && <span className="truncate">{item.label}</span>}
               {(() => {
-                // بادج واحد لكل عنصر: طلبات المتجر أو الحجوزات (نفس الشكل)
-                const badgeCount =
-                  item.badge === "onlineOrders"
-                    ? newOrdersCount
-                    : item.badge === "bookings"
-                      ? newBookingsCount
-                      : 0;
+                // بادج الحجوزات بس — طلبات المتجر اتشالت من نسخة التجميل
+                const badgeCount = item.badge === "bookings" ? newBookingsCount : 0;
                 return badgeCount > 0 ? (
                   <span
                     className={cn(

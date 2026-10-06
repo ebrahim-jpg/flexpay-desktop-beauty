@@ -1,8 +1,6 @@
 import { BrowserWindow } from "electron";
 import { getMainWindow } from "../main-window";
 import type { PrinterInfo } from "../../shared/settings";
-import type { OnlineOrderDTO } from "../../shared/online-orders";
-import { formatOnlineQty } from "../../shared/online-orders";
 
 function esc(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) =>
@@ -131,73 +129,4 @@ export async function printReceipt(
   printerName?: string | null
 ): Promise<boolean> {
   return renderAndPrint(html, printerName, true);
-}
-
-// ===== تذكرة المطبخ =====
-// ⚠️ **بلا أسعار**: دي ورقة شغل للشيف مش فاتورة. الأصناف بخط كبير، والملاحظة تحت الصنف
-// (بلا/زيادة/مستوي الاستواء) لأن دي اللي بتفرق في المطبخ.
-// بتطلع على `kitchen_printer_name` لو متظبطة، وإلا على طابعة الفاتورة (محل بطابعة واحدة).
-// تذكرة تجهيز طلب المتجر — للبائع عشان يجهّز قبل ما الكاشير يضرب (من غير أسعار).
-export async function printOnlineOrderTicket(
-  order: OnlineOrderDTO,
-  printerName?: string | null,
-  shopName?: string
-): Promise<boolean> {
-  const items = order.items
-    .map(
-      (it) => `
-      <div class="item">
-        <span class="qty">${esc(formatOnlineQty(it.quantity, it.sale_type))}</span>
-        <span class="name">${esc(it.name)}${it.variant_size ? ` — ${esc(it.variant_size)}` : ""}</span>
-      </div>
-      ${it.notes ? `<div class="inote">↳ ${esc(it.notes)}</div>` : ""}`
-    )
-    .join("");
-
-  const when = order.web_created_at
-    ? new Date(order.web_created_at).toLocaleString("ar-EG", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : new Date().toLocaleString("ar-EG");
-
-  const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
-    <style>
-      @page { margin: 0; }
-      * { box-sizing: border-box; }
-      body{ margin:0; padding:8px 7px; width:100%;
-        font-family:Tahoma,Arial,sans-serif; color:#000; font-size:13px; line-height:1.5; }
-      .center{ text-align:center; }
-      .title{ font-size:17px; font-weight:bold; margin:2px 0; }
-      .tag{ display:inline-block; border:2px solid #000; border-radius:6px;
-        padding:2px 10px; font-weight:bold; font-size:14px; margin:4px 0; }
-      .hr{ border:none; border-top:1px dashed #000; margin:7px 0; }
-      .row{ display:flex; justify-content:space-between; gap:6px; font-size:12px; }
-      .item{ display:flex; gap:8px; align-items:baseline; padding:3px 0; font-size:15px; }
-      .qty{ font-weight:bold; min-width:34px; }
-      .name{ font-weight:600; }
-      .inote{ font-size:12px; color:#000; padding-right:42px; margin-top:-2px; }
-      .box{ border:1px solid #000; border-radius:6px; padding:6px 8px; margin-top:4px; font-size:12px; }
-      .lbl{ font-weight:bold; }
-    </style></head>
-    <body>
-      <div class="center">
-        ${shopName ? `<div class="title">${esc(shopName)}</div>` : ""}
-        <div class="tag">🛒 طلب المتجر — تجهيز</div>
-      </div>
-      <div class="hr"></div>
-      <div class="row"><span class="lbl">العميل</span><span>${esc(order.customer_name || "—")}</span></div>
-      <div class="row"><span class="lbl">الموبايل</span><span dir="ltr">${esc(order.customer_phone)}</span></div>
-      <div class="row"><span class="lbl">الوقت</span><span>${esc(when)}</span></div>
-      <div class="hr"></div>
-      ${items}
-      <div class="hr"></div>
-      ${order.address ? `<div class="box"><span class="lbl">العنوان:</span> ${esc(order.address)}</div>` : ""}
-      ${order.notes ? `<div class="box"><span class="lbl">ملاحظات:</span> ${esc(order.notes)}</div>` : ""}
-      <div class="center" style="margin-top:8px; font-size:12px;">${order.items_count.toLocaleString("ar-EG")} صنف · جهّز للتوصيل</div>
-    </body></html>`;
-
-  return renderAndPrint(html, printerName, !!printerName);
 }

@@ -191,8 +191,8 @@ export default function ProductsPage() {
   return (
     <div className="flex h-[calc(100vh-3rem)] flex-col space-y-4">
       <PageHeader
-        title="المنتجات والفئات"
-        description="إدارة كل ما يُباع في المحل"
+        title="الخدمات والفئات"
+        description="الخدمات اللي المحل بيقدّمها وفئاتها"
         action={
           canManage ? (
             <div className="flex flex-wrap items-center gap-2">
@@ -206,7 +206,7 @@ export default function ProductsPage() {
               </Button>
               <Button onClick={openAddProduct}>
                 <Plus className="h-5 w-5" />
-                إضافة منتج
+                إضافة خدمة
               </Button>
             </div>
           ) : undefined
@@ -280,8 +280,8 @@ export default function ProductsPage() {
       <ConfirmDialog
         open={!!deleteProductTarget}
         onOpenChange={(o) => !o && setDeleteProductTarget(null)}
-        title="حذف المنتج"
-        description={`متأكد إنك عايز تحذف منتج "${deleteProductTarget?.name}"؟ بياناته بتفضل موجودة.`}
+        title="حذف الخدمة"
+        description={`متأكد إنك عايز تحذف خدمة "${deleteProductTarget?.name}"؟ بياناتها بتفضل موجودة.`}
         confirmText="حذف"
         variant="danger"
         onConfirm={handleDeleteProduct}
@@ -290,8 +290,8 @@ export default function ProductsPage() {
       <ConfirmDialog
         open={!!removeCashierTarget}
         onOpenChange={(o) => !o && setRemoveCashierTarget(null)}
-        title="شيل المنتج من البيع"
-        description={`المنتج "${removeCashierTarget?.name}" هيختفي خالص من الطاولات والبيع السريع (مش هيظهر حتى كـ "نفد"). بياناته وتقاريره بتفضل زي ما هي، وتقدر ترجّعه في أي وقت. متأكد؟`}
+        title="شيل الخدمة من البيع"
+        description={`خدمة "${removeCashierTarget?.name}" هتختفي خالص من شاشة الكراسي (مش هتظهر حتى كـ "نفدت موادها"). بياناتها وتقاريرها بتفضل زي ما هي، وتقدر ترجّعها في أي وقت. متأكد؟`}
         confirmText="شيله من البيع"
         variant="danger"
         onConfirm={handleRemoveFromCashier}

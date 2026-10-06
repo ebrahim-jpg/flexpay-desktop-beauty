@@ -13,7 +13,6 @@ import { registerActivationIpc } from "./activation.ipc";
 import { registerBackupIpc } from "./backup.ipc";
 import { registerPurchasesIpc } from "./purchases.ipc";
 import { registerStocktakeIpc } from "./stocktake.ipc";
-import { registerOnlineOrdersIpc } from "./online-orders.ipc";
 // ⚠️ استيراد/تصدير إكسل — **مش النسخ الاحتياطي**. ده بيضيف ويحدّث بس.
 import { registerDataTransferIpc } from "./data-transfer.ipc";
 // مجال البلايستيشن: الغرف والجلسات
@@ -38,7 +37,6 @@ export function registerAllIpc(): void {
   registerBackupIpc();
   registerPurchasesIpc();
   registerStocktakeIpc();
-  registerOnlineOrdersIpc();
   registerDataTransferIpc();
   registerGamingIpc();
   registerRoomBookingsIpc();

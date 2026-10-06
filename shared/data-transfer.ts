@@ -10,15 +10,16 @@ import type { SaleType } from "./products";
 // ⚠️ نقبل العربي والإنجليزي، وترتيب الأعمدة مالوش أي أهمية — بنقرا الصف الأول
 // ونطابق. ملف بيتصدّر مننا لازم يرجع يتستورد من غير ما المستخدم يعدّل حاجة.
 
-export type ProductColumn = "name" | "price" | "barcode" | "category" | "saleType" | "cost";
+// ⚠️ **خدمات بس**: مفيش باركود (خدمة مالهاش باركود) ومفيش «النوع» (مفيش بيع
+// بالوزن — الكيلو للخامات في المخزون مش للبيع). الأسماء القديمة فاضلة في
+// `COLUMN_ALIASES` عشان ملف قديم يتستورد من غير ما يقع — بتتجاهل بس.
+export type ProductColumn = "name" | "price" | "category" | "cost";
 export type CustomerColumn = "name" | "phone";
 
 export const PRODUCT_HEADERS: Record<ProductColumn, string[]> = {
-  name: ["الاسم", "اسم المنتج", "المنتج", "name", "product", "product name"],
+  name: ["الاسم", "اسم الخدمة", "الخدمة", "اسم المنتج", "المنتج", "name", "service", "product"],
   price: ["السعر", "سعر البيع", "price", "sale price"],
-  barcode: ["الباركود", "باركود", "barcode", "sku"],
   category: ["الفئة", "القسم", "category", "group"],
-  saleType: ["النوع", "طريقة البيع", "الوحدة", "type", "sale type", "unit"],
   cost: ["التكلفة", "سعر الشراء", "سعر التكلفة", "cost", "cost price", "purchase price"],
 };
 
@@ -28,21 +29,12 @@ export const CUSTOMER_HEADERS: Record<CustomerColumn, string[]> = {
 };
 
 /** الأعمدة اللي بيتصدّر بيها الملف — نفس ترتيب القالب */
-export const PRODUCT_EXPORT_ORDER: ProductColumn[] = [
-  "name",
-  "price",
-  "cost",
-  "barcode",
-  "category",
-  "saleType",
-];
+export const PRODUCT_EXPORT_ORDER: ProductColumn[] = ["name", "price", "cost", "category"];
 export const PRODUCT_EXPORT_LABEL: Record<ProductColumn, string> = {
-  name: "الاسم",
+  name: "اسم الخدمة",
   price: "السعر",
   cost: "التكلفة",
-  barcode: "الباركود",
   category: "الفئة",
-  saleType: "النوع",
 };
 export const CUSTOMER_EXPORT_LABEL: Record<CustomerColumn, string> = {
   name: "الاسم",
@@ -142,9 +134,7 @@ export interface ProductImportRow {
   name: string;
   /** `null` = الخانة فاضية · `NaN` = فيها نص مش رقم */
   price: number | null;
-  barcode: string;
   category: string;
-  saleType: string;
   cost: number | null;
 }
 

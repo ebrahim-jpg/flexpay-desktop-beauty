@@ -54,7 +54,10 @@ ok(!/kitchen|المطبخ/.test(drinks), "وشاشة الجلسة مافيهاش
 console.log("\n— مفيش توصيل —");
 ok(!exists("components/settings/DeliveryZonesEditor.tsx"), "محرر مناطق التوصيل اتمسح");
 ok(!/DeliveryZonesEditor/.test(code("app/(main)/settings/page.tsx")), "وتبويبه اتشال من الإعدادات");
-ok(!/setOrderType\("delivery"\)/.test(code("components/pos/POSHeader.tsx")), "ومفيش نوع «توصيل» في الكاشير");
+// ⚠️ كان هنا فحص `setOrderType("delivery")` على `POSHeader` — **وكان بيعدّي**:
+// الملف كان لسه فيه بلوك التوصيل كامل (منطقة + مندوب) بس مابيندهش السطر ده
+// بالحرف. درس: **الفحص على نص مش فحص على سلوك.** دلوقتي الملف كله اتمسح.
+ok(!exists("components/pos"), "فولدر الكاشير اتمسح بالكامل (ومعاه بلوك التوصيل)");
 
 console.log("\n— الأدوار —");
 const perms = read("shared/permissions.ts");
@@ -81,7 +84,7 @@ ok(/stylistPerformance/.test(repo), "وتقرير الأداء موجود");
 console.log("\n— الخدمة —");
 ok(/is_service/.test(read("shared/products.ts")), "نوع «خدمة» في المنتج");
 ok(/is_service/.test(code("components/products/ProductModal.tsx")), "وبيتحدد من مودال المنتج");
-ok(/p\.is_service/.test(code("components/pos/POSProductPanel.tsx")), "وفلتر خدمات/منتجات في الكاشير");
+ok(/is_service/.test(code("components/beauty/QuickSessionDialog.tsx")), "والجلسة السريعة بتعرض الخدمات بس");
 ok(exists("components/beauty/QuickSessionDialog.tsx"), "والجلسة السريعة موجودة");
 ok(exists("components/beauty/StaffPicker.tsx"), "ومنتقي الحلاق");
 

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { useSettingsStore } from "@/store/settings.store";
 import { startSyncSubscription } from "@/store/sync.store";
-import { startOnlineOrdersSubscription } from "@/store/online-orders.store";
 import { startBookingsSubscription } from "@/store/bookings.store";
 import { AppSidebar } from "@/components/shared/AppSidebar";
 import { FullScreenLoading } from "@/components/shared/FullScreenLoading";
@@ -34,8 +33,6 @@ export default function MainLayout({
       void loadSettings().catch(() => undefined);
       // اشتراك حيّ في حالة المزامنة (الطابور/الاتصال)
       startSyncSubscription();
-      // اشتراك حيّ في طلبات المتجر الواردة (إشعار + بادج)
-      startOnlineOrdersSubscription();
       // اشتراك حيّ في حجوزات الغرف الواردة (إشعار + بادج)
       startBookingsSubscription();
     }

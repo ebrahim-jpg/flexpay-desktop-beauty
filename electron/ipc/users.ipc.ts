@@ -236,33 +236,6 @@ export function registerUsersIpc(): void {
       })
   );
 
-  ipcMain.handle("profile:getShortcuts", () =>
-    handle(() => {
-      const actor = getCurrentActor();
-      if (actor == null) throw new Error("مفيش مستخدم مسجّل دخول");
-      return usersRepository.getShortcuts(actor);
-    })
-  );
-
-  ipcMain.handle(
-    "profile:setShortcut",
-    (_e, input: { key: string; product_id: number }) =>
-      handle(() => {
-        const actor = getCurrentActor();
-        if (actor == null) throw new Error("مفيش مستخدم مسجّل دخول");
-        usersRepository.setShortcut(actor, input.key, input.product_id);
-        return true;
-      })
-  );
-
-  ipcMain.handle("profile:deleteShortcut", (_e, key: string) =>
-    handle(() => {
-      const actor = getCurrentActor();
-      if (actor == null) throw new Error("مفيش مستخدم مسجّل دخول");
-      usersRepository.deleteShortcut(actor, key);
-      return true;
-    })
-  );
 }
 
 // اسم المستخدم الفاعل للسجل — يقرأه من قاعدة البيانات

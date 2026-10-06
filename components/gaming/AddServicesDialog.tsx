@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Minus, Package, Plus, Search, Trash2, UserRound } from "lucide-react";
+import { Minus, Scissors, Plus, Search, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ProductCard } from "@/components/pos/ProductCard";
-import { ModifierModal } from "@/components/pos/ModifierModal";
-import { SizePicker } from "@/components/pos/SizePicker";
+import { ProductCard } from "@/components/sales/ProductCard";
+import { ModifierModal } from "@/components/sales/ModifierModal";
+import { SizePicker } from "@/components/sales/SizePicker";
 import { StaffPicker } from "@/components/beauty/StaffPicker";
 import { useIPC } from "@/hooks/useIPC";
 import { useSettingsStore } from "@/store/settings.store";
@@ -21,7 +21,7 @@ import type { SelectedModifier } from "@/shared/orders";
 import type { SessionItemDTO } from "@/shared/gaming";
 import type { GamingSessionDTO } from "@/shared/gaming";
 
-interface AddDrinksDialogProps {
+interface AddServicesDialogProps {
   session: GamingSessionDTO | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -30,14 +30,13 @@ interface AddDrinksDialogProps {
 
 // أصناف «الحساب المفتوح» للكرسي — بتتضاف على الحساب ومابتخصمش مخزون غير وقت الفاتورة،
 // وكل صنف بيتضاف بتطلع له تذكرة مطبخ على طول.
-export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddDrinksDialogProps) {
+export function AddServicesDialog({ session, open, onOpenChange, onChanged }: AddServicesDialogProps) {
   const { invoke } = useIPC();
   const formatCurrency = useSettingsStore((s) => s.formatCurrency);
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [categories, setCategories] = useState<CategoryDTO[]>([]);
   const [category, setCategory] = useState<number | null>(null);
   // الصالون كتالوجه خدمات في الأساس — الفلتر بيوصّل للخدمة بضغطة
-  const [kind, setKind] = useState<"all" | "service" | "product">("all");
   const [search, setSearch] = useState("");
   const [modifierProduct, setModifierProduct] = useState<ProductDTO | null>(null);
   const [sizeProduct, setSizeProduct] = useState<ProductDTO | null>(null);
@@ -50,7 +49,7 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
       setProducts(all.filter((p) => p.is_active));
       setCategories(cats);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر تحميل المنتجات");
+      toast.error(e instanceof Error ? e.message : "تعذّر تحميل الخدمات");
     }
   }, [invoke]);
 
@@ -67,10 +66,9 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
     return products.filter(
       (p) =>
         (category === null || p.category_id === category) &&
-        (kind === "all" || (kind === "service" ? p.is_service : !p.is_service)) &&
         (!q || p.name.toLowerCase().includes(q) || (p.barcode ?? "").toLowerCase().includes(q))
     );
-  }, [products, category, kind, search]);
+  }, [products, category, search]);
 
   async function add(
     product: ProductDTO,
@@ -176,7 +174,7 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
       <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>
-            أوردر {session?.room_name} — {session?.session_label}
+            خدمات {session?.room_name} — {session?.session_label}
           </DialogTitle>
         </DialogHeader>
 
@@ -251,7 +249,7 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
 
           </div>
 
-          {/* المنتجات */}
+          {/* الخدمات */}
           <div className="flex flex-1 flex-col gap-3 overflow-hidden">
             <div className="relative">
               <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary" />
@@ -263,29 +261,8 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
                 autoFocus
               />
             </div>
-            <div className="flex gap-2">
-              {(
-                [
-                  { k: "all" as const, label: "الكل" },
-                  { k: "service" as const, label: "خدمات" },
-                  { k: "product" as const, label: "منتجات" },
-                ]
-              ).map((t) => (
-                <button
-                  key={t.k}
-                  type="button"
-                  onClick={() => setKind(t.k)}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
-                    kind === t.k
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-surface-secondary text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            {/* ⚠️ كان فيه فلتر «الكل / خدمات / منتجات» — مالوش معنى في نسخة
+                خدمات بس، وكان بيوحي إن فيه بضاعة تتباع. */}
             <div className="flex flex-wrap gap-2">
               {[{ id: null as number | null, name: "كل الفئات" }, ...categories].map((c) => (
                 <button
@@ -305,7 +282,7 @@ export function AddDrinksDialog({ session, open, onOpenChange, onChanged }: AddD
             </div>
             <div className="flex-1 overflow-y-auto pl-1">
               {filtered.length === 0 ? (
-                <EmptyState icon={Package} title="مفيش منتجات" description="جرّب فئة تانية أو امسح البحث." />
+                <EmptyState icon={Scissors} title="مفيش خدمات" description="جرّب فئة تانية أو امسح البحث." />
               ) : (
                 <div className="grid grid-cols-3 gap-3 lg:grid-cols-4">
                   {filtered.map((p) => (

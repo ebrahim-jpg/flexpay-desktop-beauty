@@ -50,7 +50,7 @@ export default function SettingsPage() {
           <TabsList>
             <TabsTrigger value="shop">بيانات المحل</TabsTrigger>
             <TabsTrigger value="business">إعدادات العمل</TabsTrigger>
-            <TabsTrigger value="gaming">الطاولات</TabsTrigger>
+            <TabsTrigger value="gaming">الكراسي</TabsTrigger>
             <TabsTrigger value="payments">طرق الدفع</TabsTrigger>
             <TabsTrigger value="nationalities">الجنسيات</TabsTrigger>
             <TabsTrigger value="receipt">الفاتورة والطباعة</TabsTrigger>

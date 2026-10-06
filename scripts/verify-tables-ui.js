@@ -49,12 +49,17 @@ ok(
   !/mergeSessions|splitCheckout|quoteSplit/.test(code("electron/repositories/gaming.repository.ts")),
   "والريبو مافيهوش دوالهم خالص"
 );
-ok(/SessionCheckoutModal/.test(page) && /AddDrinksDialog/.test(page), "الحساب والطلبات موصّلين");
+// ⚠️ الملف كان اسمه `AddDrinksDialog` («إضافة مشروبات») من نسخة الكافيه
+ok(/SessionCheckoutModal/.test(page) && /AddServicesDialog/.test(page), "الحساب والخدمات موصّلين");
+ok(!exists("components/gaming/AddDrinksDialog.tsx"), "ومفيش ملف اسمه AddDrinksDialog");
 ok(/TablesManager/.test(page) && exists("components/gaming/TablesManager.tsx"), "إدارة الطاولات موصّلة");
 ok(/"gaming:rooms:save"/.test(code("components/gaming/TablesManager.tsx")) && !/rate_single|rate_multi/.test(code("components/gaming/TablesManager.tsx")), "إدارة الطاولات بالاسم والمنطقة بس (مفيش أسعار)");
 ok(!/time_revenue|إيراد|items_subtotal\s*\)\s*\}\s*<\/p>\s*<p[^>]*>الوقت/.test(page), "مفيش إيراد ولا «وقت محسوب» على شاشة الطاولات");
 ok(/canCancelOrder/.test(page), "زرار إلغاء الحساب ورا صلاحية canCancelOrder");
-ok(/QuickSaleDialog/.test(page), "البيع السريع متاح من شاشة الطاولات كمان");
+// ⚠️ «البيع السريع» كان للي بيشتري **مشروب/سناك** من غير ما يقعد — بيع بضاعة،
+// واتشال من نسخة التجميل. البديل هو **الجلسة السريعة** (خدمة بحلاق في ضغطة).
+ok(!/QuickSaleDialog/.test(page), "مفيش بيع سريع بالمنتجات");
+ok(/QuickSessionDialog/.test(page), "والجلسة السريعة موصّلة بداله");
 
 // ===== ③ مفيش شاشة غرف =====
 console.log("\n— مفيش شاشة غرف —");
@@ -73,10 +78,13 @@ ok(/"bookings:confirm",\s*\{[^}]*table_id/.test(bookingsPage), "تأكيد ال�
 ok(/"gaming:rooms:list"/.test(bookingsPage) && /party_size/.test(bookingsPage), "الشاشة بتعرض طلب الطاولة بعدد الأفراد وبتجيب قايمة الطاولات");
 
 // ===== ⑤ التقارير =====
-console.log("\n— قسم الطاولات في التقارير —");
+console.log("\n— التقارير —");
 const sales = code("components/reports/SalesReport.tsx");
-ok(/value="table_session"[^<]*>الطاولات</.test(sales), "تقرير المبيعات: خيار «الطاولات» في فلتر القسم");
-ok(/table_session: "جلسة"/.test(code("shared/orders.ts")), "لافتة مصدر table_session = «جلسة»");
+// ⚠️ فلتر «المصدر» اتشال: الكاشير والمتجر اتشالوا فكل فاتورة مصدرها جلسة كرسي —
+// فلتر بخيار واحد له معنى هو ضوضاء على الشاشة.
+ok(!/value="pos"|بيع سريع/.test(sales), "مفيش خيار «بيع سريع» في التقرير");
+ok(!/setSource/.test(sales), "وفلتر «المصدر» اتشال خالص (كل فاتورة بقت جلسة)");
+ok(/table_session: "جلسة"/.test(code("shared/orders.ts")), "ولافتة مصدر table_session = «جلسة»");
 
 console.log(failed === 0 ? "\n✅ واجهة الطاولات متوصّلة صح" : `\n❌ ${failed} فحص فشل`);
 process.exit(failed === 0 ? 0 : 1);

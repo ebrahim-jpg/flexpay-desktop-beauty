@@ -178,7 +178,7 @@ export default function DashboardPage() {
           <OrdersTable
             orders={orders}
             onSelect={setSelected}
-            emptyHint="لسه مفيش فواتير النهارده. هتظهر هنا كل فاتورة تتعمل على الطاولات أو البيع السريع."
+            emptyHint="لسه مفيش فواتير النهارده. هتظهر هنا كل فاتورة تتعمل على الكراسي."
           />
         </div>
       )}

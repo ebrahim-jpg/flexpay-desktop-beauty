@@ -181,7 +181,11 @@ export class ProductsRepository extends BaseRepository {
           modifiers: JSON.stringify(input.modifiers ?? []),
           // نسخة التجميل: المنتجات بالقطعة بس (الكيلو للخامات في المخزون مش للبيع)
           sale_type: "piece",
-          is_service: input.is_service === true ? 1 : 0,
+          // 🔴 **خدمات بس.** متثبّت على ١ مهما بعتت الواجهة أو الاستيراد.
+          // ده قرار تسعير: اللي عايز يبيع كريمات وبضاعة بياخد نسخة البيع بالتجزئة.
+          // والقفل هنا مش في الواجهة، لأن فيه تلات أبواب تانية بتوصل للريبو:
+          // استيراد الإكسل (كان مابيبعتش `is_service` خالص) والـseed وسكربت الـsmoke.
+          is_service: 1,
           duration_minutes: Math.max(0, Math.floor(input.duration_minutes ?? 0)),
           actor: actorId,
           now,
@@ -218,7 +222,7 @@ export class ProductsRepository extends BaseRepository {
     }
     if (input.is_service !== undefined) {
       fields.push("is_service = @is_service");
-      params.is_service = input.is_service ? 1 : 0;
+      params.is_service = 1; // 🔴 خدمات بس — حتى لو اتبعت false من أي مكان
     }
     if (input.duration_minutes !== undefined) {
       fields.push("duration_minutes = @duration_minutes");

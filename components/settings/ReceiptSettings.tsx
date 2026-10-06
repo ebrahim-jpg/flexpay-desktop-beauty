@@ -81,7 +81,7 @@ export function ReceiptSettings() {
             onChange={(e) =>
               setDraft({ ...draft, receiptHeader: e.target.value })
             }
-            placeholder="كافيه النجوم — فرع المعادي"
+            placeholder="صالون نور — فرع المعادي"
           />
         </div>
 
@@ -112,25 +112,6 @@ export function ReceiptSettings() {
               </option>
             ))}
           </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>طابعة المطبخ</Label>
-          <Select
-            value={draft.kitchenPrinterName}
-            onChange={(e) => setDraft({ ...draft, kitchenPrinterName: e.target.value })}
-          >
-            <option value="">نفس طابعة الفاتورة</option>
-            {printers.map((p) => (
-              <option key={p.name} value={p.name}>
-                {p.displayName}
-                {p.isDefault ? " (افتراضية)" : ""}
-              </option>
-            ))}
-          </Select>
-          <p className="text-xs text-text-secondary">
-            تذكرة المطبخ بتطلع عليها بلا أسعار — سيبها «نفس طابعة الفاتورة» لو عندك طابعة واحدة.
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-border pt-4">

@@ -41,7 +41,7 @@ try {
   initDatabase(freshDir);
   const db = getDatabase();
   const LATEST = Math.max(...migrations.map((m) => m.version));
-  ok(LATEST === 37, `آخر migration = 37 (الفعلي ${LATEST})`);
+  ok(LATEST === 38, `آخر migration = 38 (الفعلي ${LATEST})`);
   ok(db.pragma("user_version", { simple: true }) === LATEST, "user_version = آخر migration");
 
   const settings = db.prepare("SELECT vertical FROM settings WHERE id = 1").get();
@@ -120,7 +120,10 @@ try {
   );
   const prod = up.prepare("SELECT name, price, is_service, duration_minutes FROM products WHERE local_id = 'p'").get();
   ok(prod.name === "صبغة" && prod.price === 300, "والمنتج القديم زي ما هو");
-  ok(prod.is_service === 0 && prod.duration_minutes === 0, "**والأعمدة الجديدة بقيم افتراضية آمنة** (مش خدمة)");
+  // ⚠️ migration 038 بتختم البنود القديمة **خدمات**: النسخة خدمات بس،
+  // وبند بـ`is_service = 0` كان بيختفي من الجلسة السريعة (بتفلتر على الخدمات).
+  ok(prod.is_service === 1, "**والمنتج القديم بقى خدمة** (migration 038)");
+  ok(prod.duration_minutes === 0, "ومدته صفر (ماتسجلتش لسه)");
   ok(up.pragma("user_version", { simple: true }) === LATEST, `النسخة بقت ${LATEST}`);
   ok(
     !!up.prepare("SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_session_items_staff'").get(),

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Link2, Link2Off, Pencil, UtensilsCrossed } from "lucide-react";
+import { FlaskConical, Link2, Link2Off, Pencil } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -126,7 +126,7 @@ export function RecipesTab() {
         <LoadingSkeleton rows={4} />
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon={UtensilsCrossed}
+          icon={FlaskConical}
           title="مفيش منتجات مطابقة"
           description="غيّر الفلتر أو ابحث باسم تاني."
         />

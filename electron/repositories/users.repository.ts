@@ -1,11 +1,6 @@
 import { BaseRepository } from "./base.repository";
 import { hashPassword, hashPin, verifyPasswordHash, verifyPinHash } from "../lib/crypto";
 import { effectivePermissions, canLogin, isAssignableRole, ASSIGNABLE_ROLES } from "../../shared/permissions";
-import {
-  isValidShortcutKey,
-  normalizeShortcutKey,
-  type UserShortcut,
-} from "../../shared/shortcuts";
 import type { User } from "../../types/database.types";
 import type {
   SafeUser,
@@ -419,51 +414,6 @@ export class UsersRepository extends BaseRepository {
       .run({ id: userId, h: hashPassword(newPassword), now: this.now() });
   }
 
-  // ===== اختصارات الكاشير (لكل مستخدم) =====
-  getShortcuts(userId: number): UserShortcut[] {
-    const rows = this.db
-      .prepare(
-        "SELECT shortcut_key, product_id, product_name FROM user_shortcuts WHERE user_id = ? ORDER BY shortcut_key ASC"
-      )
-      .all(userId) as { shortcut_key: string; product_id: number; product_name: string | null }[];
-    return rows.map((r) => ({
-      key: r.shortcut_key,
-      product_id: r.product_id,
-      product_name: r.product_name,
-    }));
-  }
-
-  setShortcut(userId: number, key: string, productId: number): void {
-    const k = normalizeShortcutKey(key);
-    if (!isValidShortcutKey(k)) {
-      throw new Error("الاختصار لازم يكون حرف أو رقم واحد (مش زر محجوز زي المسافة أو Enter)");
-    }
-    const prod = this.db
-      .prepare("SELECT name FROM products WHERE id = ? AND is_deleted = 0")
-      .get(productId) as { name: string } | undefined;
-    if (!prod) throw new Error("المنتج غير موجود");
-    this.db
-      .prepare(
-        `INSERT INTO user_shortcuts (local_id, user_id, shortcut_key, product_id, product_name, created_at)
-         VALUES (@local_id, @user, @key, @pid, @pname, @now)
-         ON CONFLICT(user_id, shortcut_key)
-         DO UPDATE SET product_id = @pid, product_name = @pname`
-      )
-      .run({
-        local_id: this.newLocalId(),
-        user: userId,
-        key: k,
-        pid: productId,
-        pname: prod.name,
-        now: this.now(),
-      });
-  }
-
-  deleteShortcut(userId: number, key: string): void {
-    this.db
-      .prepare("DELETE FROM user_shortcuts WHERE user_id = ? AND shortcut_key = ?")
-      .run(userId, normalizeShortcutKey(key));
-  }
 }
 
 export const usersRepository = new UsersRepository();
